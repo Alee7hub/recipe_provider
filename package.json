@@ -1,0 +1,50 @@
+{
+    "name": "recipe-provider",
+    "version": "1.0.0",
+    "description": "A modern web app for finding recipes based on available ingredients",
+    "main": "index.html",
+    "scripts": {
+        "start": "python -m http.server 8000",
+        "serve": "npx http-server -p 8000 -o",
+        "dev": "npx live-server --port=8000 --open=/",
+        "lint:html": "npx htmlhint index.html",
+        "lint:css": "npx stylelint \"src/css/**/*.css\"",
+        "lint:js": "npx eslint \"src/js/**/*.js\"",
+        "validate": "npm run lint:html && npm run lint:css && npm run lint:js",
+        "test": "echo \"Tests will be added in future phases\" && exit 0"
+    },
+    "keywords": [
+        "recipe",
+        "food",
+        "ingredients",
+        "cooking",
+        "web-app",
+        "frontend",
+        "javascript",
+        "responsive"
+    ],
+    "author": "Recipe Provider Team",
+    "license": "MIT",
+    "devDependencies": {
+        "eslint": "^8.0.0",
+        "htmlhint": "^1.1.4",
+        "http-server": "^14.1.1",
+        "live-server": "^1.2.2",
+        "stylelint": "^15.0.0",
+        "stylelint-config-standard": "^34.0.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Alee7hub/recipe_provider.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Alee7hub/recipe_provider/issues"
+    },
+    "homepage": "https://github.com/Alee7hub/recipe_provider#readme",
+    "browserslist": [
+        "> 1%",
+        "last 2 versions",
+        "not dead",
+        "not ie 11"
+    ]
+}

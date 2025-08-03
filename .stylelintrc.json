@@ -1,0 +1,12 @@
+{
+    "extends": ["stylelint-config-standard"],
+    "rules": {
+        "custom-property-pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+        "selector-class-pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
+        "declaration-no-important": null,
+        "property-no-vendor-prefix": null,
+        "value-no-vendor-prefix": null,
+        "color-function-notation": null
+    },
+    "ignoreFiles": ["**/*.min.css", "**/vendor/**/*.css"]
+}
