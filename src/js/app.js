@@ -36,26 +36,33 @@ class RecipeProviderApp {
             this.isInitialized = true;
             console.log('Recipe Provider App initialized successfully');
         } catch (error) {
+            console.error('App initialization error:', error);
             handleError(error, 'Failed to initialize the application');
         }
     }
     
     // Task 10: Initialize advanced UI features
     initializeAdvancedFeatures() {
-        // Start performance monitoring
-        PerformanceMonitor.start();
-        
-        // Check browser compatibility and show warnings if needed
-        BrowserCompatibility.showCompatibilityWarnings();
-        
-        // Initialize accessibility enhancements
-        AccessibilityEnhancer.init();
-        
-        // Initialize lazy loading
-        LazyLoading.init();
-        
-        // Initialize keyboard navigation
-        KeyboardNavigation.init();
+        try {
+            // Start performance monitoring
+            PerformanceMonitor.start();
+            
+            // Check browser compatibility and show warnings if needed
+            BrowserCompatibility.showCompatibilityWarnings();
+            
+            // Initialize accessibility enhancements
+            AccessibilityEnhancer.init();
+            
+            // Initialize lazy loading
+            LazyLoading.init();
+            
+            // Initialize keyboard navigation
+            KeyboardNavigation.init();
+            
+        } catch (error) {
+            console.warn('Error in advanced features initialization:', error);
+            // Continue with basic initialization even if advanced features fail
+        }
         
         // Mark performance ready when app is fully loaded
         setTimeout(() => {

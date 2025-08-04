@@ -279,6 +279,20 @@ class TextInputComponent extends Component {
         this.maxLength = 500;
         this.characterCounter = null;
         this.validationTimeout = null;
+        
+        // Task 11: Enhanced autocomplete and memory features
+        this.autocompleteDropdown = null;
+        this.filteredSuggestions = [];
+        this.currentSuggestionIndex = -1;
+        this.isAutocompleteVisible = false;
+        
+        try {
+            this.recentlyUsedIngredients = this.loadRecentlyUsed();
+        } catch (error) {
+            console.warn('Error loading recently used ingredients:', error);
+            this.recentlyUsedIngredients = [];
+        }
+        
         this.render();
     }
     
@@ -295,13 +309,25 @@ class TextInputComponent extends Component {
             <p>Enter the ingredients you have available, separated by commas</p>
         `;
         
+        // Task 11: Create autocomplete wrapper
+        const autocompleteWrapper = createElement('div', 'autocomplete-wrapper');
+        
         // Create main textarea with enhanced features
         const textarea = createElement('textarea', 'text-input-area');
-        textarea.placeholder = 'Enter your available ingredients (e.g., tomatoes, cheese, pasta, chicken, onions, garlic...)';
+        textarea.placeholder = 'Start typing ingredients... (e.g., tomatoes, cheese, pasta...)';
         textarea.rows = 6;
         textarea.maxLength = this.maxLength;
         textarea.setAttribute('aria-label', 'Enter your available ingredients');
         textarea.setAttribute('aria-describedby', 'ingredient-help');
+        textarea.setAttribute('autocomplete', 'off');
+        
+        // Task 11: Create autocomplete dropdown
+        const autocompleteDropdown = createElement('div', 'autocomplete-dropdown hidden');
+        autocompleteDropdown.setAttribute('role', 'listbox');
+        autocompleteDropdown.setAttribute('aria-label', 'Ingredient suggestions');
+        
+        autocompleteWrapper.appendChild(textarea);
+        autocompleteWrapper.appendChild(autocompleteDropdown);
         
         // Create helpful hints section with enhanced guidance
         const hintsSection = createElement('div', 'input-hints');
@@ -314,16 +340,32 @@ class TextInputComponent extends Component {
                         <li>Separate ingredients with commas</li>
                         <li>Be specific (e.g., "fresh basil" instead of just "herbs")</li>
                         <li>Include quantities if you prefer (e.g., "2 tomatoes")</li>
+                        <li>Use <kbd>↑</kbd>/<kbd>↓</kbd> arrows to navigate suggestions</li>
+                        <li>Press <kbd>Tab</kbd> or <kbd>Enter</kbd> to select suggestions</li>
                         <li>Use <kbd>Ctrl+Enter</kbd> to quickly find recipes</li>
                     </ul>
                 </div>
             </div>
         `;
         
-        // Create suggestions section with tooltips
+        // Task 11: Create recently used ingredients section
+        const recentSection = createElement('div', 'recently-used-section');
+        recentSection.innerHTML = `
+            <div class="recently-used-title">🕒 Recently Used:</div>
+            <div class="recently-used-tags" role="list" aria-label="Recently used ingredients"></div>
+        `;
+        
+        // Task 11: Create preset combinations section
+        const presetsSection = createElement('div', 'preset-combinations-section');
+        presetsSection.innerHTML = `
+            <div class="presets-title">✨ Quick Start Combinations:</div>
+            <div class="preset-combinations" role="list" aria-label="Preset ingredient combinations"></div>
+        `;
+        
+        // Create suggestions section with organized categories
         const suggestionsSection = createElement('div', 'input-suggestions');
         suggestionsSection.innerHTML = `
-            <div class="suggestions-title">🔤 Quick Add:</div>
+            <div class="suggestions-title">🔤 Common Ingredients:</div>
             <div class="suggestions-tags" role="list" aria-label="Common ingredient suggestions">
                 ${this.getCommonIngredients().map(ingredient => 
                     `<button class="suggestion-tag interactive-element" type="button" data-ingredient="${ingredient}" aria-label="Add ${ingredient}" title="Click to add ${ingredient}">${ingredient}</button>`
@@ -332,12 +374,17 @@ class TextInputComponent extends Component {
         `;
         
         // Setup form field structure
-        formField.appendChild(textarea);
+        formField.appendChild(autocompleteWrapper);
         
-        // Event listeners with debounced validation
+        // Task 11: Enhanced event listeners with autocomplete
         addEvent(textarea, 'input', (e) => {
             this.value = e.target.value;
             this.handleInputChange();
+            this.handleAutocomplete(e);
+        });
+        
+        addEvent(textarea, 'keydown', (e) => {
+            this.handleKeyDown(e);
         });
         
         addEvent(textarea, 'paste', (e) => {
@@ -347,14 +394,26 @@ class TextInputComponent extends Component {
             }, 10);
         });
         
-        addEvent(textarea, 'blur', () => {
-            this.validateInput(true); // Force validation on blur
+        addEvent(textarea, 'blur', (e) => {
+            // Delay hiding autocomplete to allow clicking on suggestions
+            setTimeout(() => {
+                this.hideAutocomplete();
+                this.validateInput(true); // Force validation on blur
+            }, 200);
         });
         
         addEvent(textarea, 'focus', () => {
             // Show helpful tooltip on focus
             if (this.value.length === 0) {
                 TooltipSystem.showTemporary(textarea, 'Start typing your ingredients separated by commas', 3000);
+            }
+        });
+        
+        // Task 11: Autocomplete dropdown event handlers
+        addEvent(autocompleteDropdown, 'click', (e) => {
+            if (e.target.classList.contains('autocomplete-item')) {
+                const ingredient = e.target.textContent;
+                this.selectSuggestion(ingredient);
             }
         });
         
@@ -371,6 +430,30 @@ class TextInputComponent extends Component {
             }
         });
         
+        // Task 11: Recently used ingredients click handlers
+        addEvent(recentSection, 'click', (e) => {
+            if (e.target.classList.contains('recent-tag')) {
+                const ingredient = e.target.getAttribute('data-ingredient');
+                this.addIngredient(ingredient);
+                
+                NotificationSystem.success(`Added "${ingredient}" from recent ingredients`, {
+                    duration: 2000
+                });
+            }
+        });
+        
+        // Task 11: Preset combinations click handlers
+        addEvent(presetsSection, 'click', (e) => {
+            if (e.target.classList.contains('preset-combination')) {
+                const ingredients = JSON.parse(e.target.getAttribute('data-ingredients'));
+                this.addPresetCombination(ingredients);
+                
+                NotificationSystem.success(`Added preset combination: ${e.target.getAttribute('data-title')}`, {
+                    duration: 3000
+                });
+            }
+        });
+        
         // Keyboard shortcuts for suggestions
         addEvent(suggestionsSection, 'keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -382,6 +465,9 @@ class TextInputComponent extends Component {
         // Store references
         this.textarea = textarea;
         this.formField = formField;
+        this.autocompleteDropdown = autocompleteDropdown;
+        this.recentSection = recentSection;
+        this.presetsSection = presetsSection;
         
         // Initialize character counter
         this.characterCounter = CharacterCounter.create(textarea, this.maxLength, {
@@ -393,9 +479,17 @@ class TextInputComponent extends Component {
         this.element.appendChild(header);
         this.element.appendChild(formField);
         this.element.appendChild(hintsSection);
+        this.element.appendChild(recentSection);
+        this.element.appendChild(presetsSection);
         this.element.appendChild(suggestionsSection);
         
         this.container.appendChild(this.element);
+        
+        // Task 11: Initialize additional features
+        setTimeout(() => {
+            this.updateRecentlyUsedDisplay();
+            this.updatePresetCombinations();
+        }, 0);
     }
     
     handleInputChange() {
@@ -423,6 +517,83 @@ class TextInputComponent extends Component {
         ];
     }
     
+    // Task 11: Enhanced ingredient database with categories
+    getIngredientDatabase() {
+        return {
+            vegetables: [
+                'tomatoes', 'onions', 'garlic', 'bell peppers', 'mushrooms', 'spinach',
+                'carrots', 'broccoli', 'cauliflower', 'zucchini', 'eggplant', 'cucumber',
+                'lettuce', 'cabbage', 'celery', 'corn', 'peas', 'green beans',
+                'asparagus', 'brussels sprouts', 'sweet potato', 'beets', 'radish',
+                'kale', 'arugula', 'bok choy', 'leeks', 'shallots', 'ginger', 'chives'
+            ],
+            proteins: [
+                'chicken breast', 'chicken thighs', 'ground beef', 'beef steak', 'pork chops',
+                'ground turkey', 'salmon', 'tuna', 'shrimp', 'eggs', 'tofu', 'tempeh',
+                'black beans', 'chickpeas', 'lentils', 'quinoa', 'greek yogurt', 'cottage cheese',
+                'ground pork', 'bacon', 'ham', 'turkey', 'cod', 'tilapia', 'crab', 'scallops'
+            ],
+            grains: [
+                'rice', 'pasta', 'bread', 'quinoa', 'oats', 'barley', 'bulgur',
+                'couscous', 'farro', 'brown rice', 'wild rice', 'whole wheat pasta',
+                'ramen noodles', 'rice noodles', 'tortillas', 'pita bread', 'bagels'
+            ],
+            dairy: [
+                'milk', 'cheese', 'butter', 'cream', 'yogurt', 'sour cream',
+                'cream cheese', 'mozzarella', 'cheddar', 'parmesan', 'feta',
+                'goat cheese', 'ricotta', 'heavy cream', 'half and half'
+            ],
+            pantry: [
+                'olive oil', 'vegetable oil', 'salt', 'black pepper', 'basil', 'oregano',
+                'thyme', 'rosemary', 'paprika', 'cumin', 'garlic powder', 'onion powder',
+                'soy sauce', 'vinegar', 'lemon juice', 'lime juice', 'honey', 'sugar',
+                'flour', 'baking powder', 'vanilla extract', 'hot sauce', 'mustard',
+                'ketchup', 'mayonnaise', 'worcestershire sauce', 'sesame oil', 'coconut oil'
+            ],
+            fruits: [
+                'apples', 'bananas', 'oranges', 'lemons', 'limes', 'strawberries',
+                'blueberries', 'raspberries', 'grapes', 'pineapple', 'mango',
+                'avocado', 'coconut', 'dates', 'raisins', 'cranberries'
+            ]
+        };
+    }
+    
+    // Task 11: Get all ingredients as flat array for autocomplete
+    getAllIngredients() {
+        const database = this.getIngredientDatabase();
+        return Object.values(database).flat();
+    }
+    
+    // Task 11: Load recently used ingredients from localStorage
+    loadRecentlyUsed() {
+        try {
+            const recent = storage.get('recentlyUsedIngredients');
+            return recent && Array.isArray(recent) ? recent.slice(0, 10) : [];
+        } catch (error) {
+            console.warn('Error loading recently used ingredients:', error);
+            return [];
+        }
+    }
+    
+    // Task 11: Save recently used ingredients to localStorage
+    saveRecentlyUsed() {
+        storage.set('recentlyUsedIngredients', this.recentlyUsedIngredients);
+    }
+    
+    // Task 11: Add ingredient to recently used list
+    addToRecentlyUsed(ingredient) {
+        const normalizedIngredient = ingredient.toLowerCase().trim();
+        // Remove if already exists
+        this.recentlyUsedIngredients = this.recentlyUsedIngredients.filter(
+            item => item.toLowerCase() !== normalizedIngredient
+        );
+        // Add to beginning
+        this.recentlyUsedIngredients.unshift(ingredient);
+        // Keep only last 10
+        this.recentlyUsedIngredients = this.recentlyUsedIngredients.slice(0, 10);
+        this.saveRecentlyUsed();
+    }
+    
     addIngredient(ingredient) {
         const currentValue = this.textarea.value.trim();
         const ingredients = currentValue ? currentValue.split(',').map(i => i.trim()) : [];
@@ -434,6 +605,10 @@ class TextInputComponent extends Component {
             this.textarea.value = ingredients.join(', ');
             this.value = this.textarea.value;
             this.handleInputChange();
+            
+            // Task 11: Add to recently used ingredients
+            this.addToRecentlyUsed(ingredient);
+            this.updateRecentlyUsedDisplay();
             
             // Focus back to textarea
             this.textarea.focus();
@@ -513,6 +688,285 @@ class TextInputComponent extends Component {
         } else {
             LoadingOverlay.hide(this.element);
             this.textarea.disabled = false;
+        }
+    }
+    
+    // Task 11: Autocomplete functionality
+    handleAutocomplete(event) {
+        const value = event.target.value;
+        const cursorPosition = event.target.selectionStart;
+        
+        // Get current word being typed
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const lastCommaIndex = textBeforeCursor.lastIndexOf(',');
+        const currentWord = textBeforeCursor.substring(lastCommaIndex + 1).trim();
+        
+        if (currentWord.length >= 2) {
+            this.filterSuggestions(currentWord);
+            this.showAutocomplete();
+        } else {
+            this.hideAutocomplete();
+        }
+    }
+    
+    // Task 11: Filter suggestions based on input
+    filterSuggestions(query) {
+        const allIngredients = this.getAllIngredients();
+        const queryLower = query.toLowerCase();
+        
+        this.filteredSuggestions = allIngredients
+            .filter(ingredient => 
+                ingredient.toLowerCase().includes(queryLower) &&
+                !this.isIngredientAlreadyAdded(ingredient)
+            )
+            .sort((a, b) => {
+                // Prioritize exact matches at the beginning
+                const aStarts = a.toLowerCase().startsWith(queryLower);
+                const bStarts = b.toLowerCase().startsWith(queryLower);
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1;
+                return a.localeCompare(b);
+            })
+            .slice(0, 8); // Limit to 8 suggestions
+        
+        this.updateAutocompleteDropdown();
+    }
+    
+    // Task 11: Check if ingredient is already added
+    isIngredientAlreadyAdded(ingredient) {
+        const currentIngredients = this.getIngredientsArray();
+        return currentIngredients.some(existing => 
+            existing.toLowerCase() === ingredient.toLowerCase()
+        );
+    }
+    
+    // Task 11: Update autocomplete dropdown
+    updateAutocompleteDropdown() {
+        if (!this.autocompleteDropdown) return;
+        
+        this.autocompleteDropdown.innerHTML = '';
+        this.currentSuggestionIndex = -1;
+        
+        this.filteredSuggestions.forEach((ingredient, index) => {
+            const item = createElement('div', 'autocomplete-item');
+            item.textContent = ingredient;
+            item.setAttribute('role', 'option');
+            item.setAttribute('data-index', index);
+            this.autocompleteDropdown.appendChild(item);
+        });
+    }
+    
+    // Task 11: Show autocomplete dropdown
+    showAutocomplete() {
+        if (this.autocompleteDropdown && this.filteredSuggestions.length > 0) {
+            removeClass(this.autocompleteDropdown, 'hidden');
+            this.isAutocompleteVisible = true;
+        }
+    }
+    
+    // Task 11: Hide autocomplete dropdown
+    hideAutocomplete() {
+        if (this.autocompleteDropdown) {
+            addClass(this.autocompleteDropdown, 'hidden');
+            this.isAutocompleteVisible = false;
+            this.currentSuggestionIndex = -1;
+        }
+    }
+    
+    // Task 11: Handle keyboard navigation in autocomplete
+    handleKeyDown(event) {
+        if (this.isAutocompleteVisible && this.filteredSuggestions.length > 0) {
+            switch (event.key) {
+                case 'ArrowDown':
+                    event.preventDefault();
+                    this.currentSuggestionIndex = Math.min(
+                        this.currentSuggestionIndex + 1, 
+                        this.filteredSuggestions.length - 1
+                    );
+                    this.highlightSuggestion();
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    this.currentSuggestionIndex = Math.max(
+                        this.currentSuggestionIndex - 1, 
+                        -1
+                    );
+                    this.highlightSuggestion();
+                    break;
+                    
+                case 'Enter':
+                case 'Tab':
+                    if (this.currentSuggestionIndex >= 0) {
+                        event.preventDefault();
+                        const selectedIngredient = this.filteredSuggestions[this.currentSuggestionIndex];
+                        this.selectSuggestion(selectedIngredient);
+                    }
+                    break;
+                    
+                case 'Escape':
+                    this.hideAutocomplete();
+                    break;
+            }
+        }
+    }
+    
+    // Task 11: Highlight suggestion in dropdown
+    highlightSuggestion() {
+        const items = this.autocompleteDropdown.querySelectorAll('.autocomplete-item');
+        items.forEach((item, index) => {
+            if (index === this.currentSuggestionIndex) {
+                addClass(item, 'highlighted');
+            } else {
+                removeClass(item, 'highlighted');
+            }
+        });
+    }
+    
+    // Task 11: Select a suggestion
+    selectSuggestion(ingredient) {
+        const value = this.textarea.value;
+        const cursorPosition = this.textarea.selectionStart;
+        const textBeforeCursor = value.substring(0, cursorPosition);
+        const textAfterCursor = value.substring(cursorPosition);
+        
+        const lastCommaIndex = textBeforeCursor.lastIndexOf(',');
+        const beforeCurrentWord = textBeforeCursor.substring(0, lastCommaIndex + 1);
+        const afterCurrentWord = textAfterCursor;
+        
+        // Insert the selected ingredient
+        const newValue = beforeCurrentWord + (beforeCurrentWord.endsWith(',') ? ' ' : '') + ingredient + ', ' + afterCurrentWord;
+        
+        this.textarea.value = newValue;
+        this.value = newValue;
+        
+        // Position cursor after the inserted ingredient
+        const newCursorPosition = beforeCurrentWord.length + ingredient.length + 2;
+        this.textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+        
+        this.hideAutocomplete();
+        this.handleInputChange();
+        
+        // Add to recently used
+        this.addToRecentlyUsed(ingredient);
+        this.updateRecentlyUsedDisplay();
+        
+        this.textarea.focus();
+    }
+    
+    // Task 11: Update recently used ingredients display
+    updateRecentlyUsedDisplay() {
+        if (!this.recentSection) return;
+        
+        const recentTagsContainer = this.recentSection.querySelector('.recently-used-tags');
+        if (!recentTagsContainer) return;
+        
+        try {
+            if (this.recentlyUsedIngredients.length === 0) {
+                recentTagsContainer.innerHTML = '<span class="no-recent">No recent ingredients yet</span>';
+                return;
+            }
+            
+            recentTagsContainer.innerHTML = this.recentlyUsedIngredients
+                .map(ingredient => 
+                    `<button class="recent-tag interactive-element" type="button" data-ingredient="${ingredient}" aria-label="Add ${ingredient}" title="Click to add ${ingredient}">${ingredient}</button>`
+                ).join('');
+        } catch (error) {
+            console.warn('Error updating recently used display:', error);
+        }
+    }
+    
+    // Task 11: Get preset ingredient combinations
+    getPresetCombinations() {
+        return [
+            {
+                title: 'Italian Pasta',
+                ingredients: ['pasta', 'tomatoes', 'garlic', 'basil', 'parmesan', 'olive oil'],
+                icon: '🍝'
+            },
+            {
+                title: 'Asian Stir-fry',
+                ingredients: ['soy sauce', 'garlic', 'ginger', 'bell peppers', 'onions', 'sesame oil'],
+                icon: '🥢'
+            },
+            {
+                title: 'Mediterranean Bowl',
+                ingredients: ['chickpeas', 'cucumber', 'tomatoes', 'feta', 'olive oil', 'lemon juice'],
+                icon: '🥗'
+            },
+            {
+                title: 'Mexican Tacos',
+                ingredients: ['ground beef', 'onions', 'tomatoes', 'cheese', 'lettuce', 'lime'],
+                icon: '🌮'
+            },
+            {
+                title: 'Indian Curry',
+                ingredients: ['chicken', 'onions', 'garlic', 'ginger', 'curry powder', 'coconut milk'],
+                icon: '🍛'
+            },
+            {
+                title: 'Breakfast Special',
+                ingredients: ['eggs', 'bacon', 'cheese', 'milk', 'butter', 'bread'],
+                icon: '🍳'
+            }
+        ];
+    }
+    
+    // Task 11: Update preset combinations display
+    updatePresetCombinations() {
+        if (!this.presetsSection) return;
+        
+        const presetsContainer = this.presetsSection.querySelector('.preset-combinations');
+        if (!presetsContainer) return;
+        
+        try {
+            const presets = this.getPresetCombinations();
+            
+            presetsContainer.innerHTML = presets
+                .map(preset => 
+                    `<button class="preset-combination interactive-element" type="button" 
+                        data-ingredients='${JSON.stringify(preset.ingredients)}' 
+                        data-title="${preset.title}"
+                        aria-label="Add ${preset.title} ingredients" 
+                        title="Click to add: ${preset.ingredients.join(', ')}">
+                        <span class="preset-icon">${preset.icon}</span>
+                        <span class="preset-title">${preset.title}</span>
+                        <span class="preset-count">${preset.ingredients.length} items</span>
+                    </button>`
+                ).join('');
+        } catch (error) {
+            console.warn('Error updating preset combinations:', error);
+        }
+    }
+    
+    // Task 11: Add preset combination ingredients
+    addPresetCombination(ingredients) {
+        const currentValue = this.textarea.value.trim();
+        const existingIngredients = currentValue ? currentValue.split(',').map(i => i.trim()) : [];
+        
+        // Filter out ingredients that already exist
+        const newIngredients = ingredients.filter(ingredient => {
+            const existingNormalized = existingIngredients.map(i => i.toLowerCase());
+            return !existingNormalized.includes(ingredient.toLowerCase());
+        });
+        
+        if (newIngredients.length > 0) {
+            const allIngredients = [...existingIngredients, ...newIngredients];
+            this.textarea.value = allIngredients.join(', ');
+            this.value = this.textarea.value;
+            this.handleInputChange();
+            
+            // Add all new ingredients to recently used
+            newIngredients.forEach(ingredient => {
+                this.addToRecentlyUsed(ingredient);
+            });
+            this.updateRecentlyUsedDisplay();
+            
+            this.textarea.focus();
+        } else {
+            NotificationSystem.warning('All ingredients from this combination are already in your list', {
+                duration: 2000
+            });
         }
     }
 }
