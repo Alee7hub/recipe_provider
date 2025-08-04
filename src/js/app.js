@@ -47,8 +47,12 @@ class RecipeProviderApp {
             // Start performance monitoring
             PerformanceMonitor.start();
             
-            // Task 12: Initialize fallback systems first
-            FallbackSystem.init();
+            // Task 12: Initialize fallback systems first (with safety check)
+            if (typeof FallbackSystem !== 'undefined') {
+                FallbackSystem.init();
+            } else {
+                console.warn('FallbackSystem not available, continuing without fallback features');
+            }
             
             // Check browser compatibility and show warnings if needed
             BrowserCompatibility.showCompatibilityWarnings();
@@ -56,19 +60,21 @@ class RecipeProviderApp {
             // Task 12: Check for missing features and show progressive enhancement
             const missingFeatures = this.getMissingFeatures();
             if (missingFeatures.length > 0) {
-                FallbackSystem.showProgressiveEnhancement(missingFeatures);
-                
-                // Enable emergency text-only mode if too many features are missing
-                if (missingFeatures.length >= 3) {
-                    console.warn('Multiple features unavailable, enabling emergency mode');
-                    setTimeout(() => {
-                        FallbackSystem.enableTextOnlyMode();
-                    }, 2000);
-                }
-                
-                // Disable animations if browser seems very limited
-                if (!BrowserCompatibility.features.requestAnimationFrame) {
-                    FallbackSystem.disableAnimations();
+                if (typeof FallbackSystem !== 'undefined') {
+                    FallbackSystem.showProgressiveEnhancement(missingFeatures);
+                    
+                    // Enable emergency text-only mode if too many features are missing
+                    if (missingFeatures.length >= 3) {
+                        console.warn('Multiple features unavailable, enabling emergency mode');
+                        setTimeout(() => {
+                            FallbackSystem.enableTextOnlyMode();
+                        }, 2000);
+                    }
+                    
+                    // Disable animations if browser seems very limited
+                    if (!BrowserCompatibility.features.requestAnimationFrame) {
+                        FallbackSystem.disableAnimations();
+                    }
                 }
             }
             
@@ -201,6 +207,12 @@ class RecipeProviderApp {
         
         // Initialize input components
         const inputContainer = $('#input-container');
+        
+        if (!inputContainer) {
+            console.error('Input container not found! Cannot initialize components.');
+            return;
+        }
+        
         this.inputComponents = {
             text: new TextInputComponent(inputContainer),
             image: new ImageUploadComponent(inputContainer),

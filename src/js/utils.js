@@ -608,9 +608,9 @@ const CharacterCounter = {
 const BrowserCompatibility = {
     // Feature detection
     features: {
-        webSpeech: typeof window !== 'undefined' && 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
-        fileAPI: typeof window !== 'undefined' && 'FileReader' in window,
-        dragDrop: typeof window !== 'undefined' && 'draggable' in document.createElement('div'),
+        webSpeech: typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window),
+        fileAPI: typeof window !== 'undefined' && ('FileReader' in window && 'File' in window && 'FileList' in window),
+        dragDrop: typeof window !== 'undefined' && ('DataTransfer' in window && 'draggable' in document.createElement('div')),
         localStorage: typeof window !== 'undefined' && 'localStorage' in window,
         requestAnimationFrame: typeof window !== 'undefined' && 'requestAnimationFrame' in window,
         intersectionObserver: typeof window !== 'undefined' && 'IntersectionObserver' in window,

@@ -986,9 +986,9 @@ class ImageUploadComponent extends Component {
     render() {
         this.element = createElement('div', 'image-upload-container');
         
-        // Task 12: Check for File API support
-        const hasFileAPI = BrowserCompatibility.features.fileAPI;
-        const hasDragDrop = BrowserCompatibility.features.dragDrop;
+        // Task 12: Check for File API support with improved detection
+        const hasFileAPI = (typeof window !== 'undefined' && 'FileReader' in window && 'File' in window);
+        const hasDragDrop = (typeof window !== 'undefined' && 'DataTransfer' in window);
         
         if (!hasFileAPI) {
             // Show unsupported message with fallback options
