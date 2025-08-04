@@ -277,91 +277,142 @@ class TextInputComponent extends Component {
         super(container);
         this.value = '';
         this.maxLength = 500;
+        this.characterCounter = null;
+        this.validationTimeout = null;
         this.render();
     }
     
     render() {
         this.element = createElement('div', 'text-input-container');
         
-        // Create header with instructions
+        // Create form field wrapper
+        const formField = createElement('div', 'form-field');
+        
+        // Create header with instructions and tooltip
         const header = createElement('div', 'input-header');
         header.innerHTML = `
             <h4>📝 Type Your Ingredients</h4>
             <p>Enter the ingredients you have available, separated by commas</p>
         `;
         
-        // Create main textarea
+        // Create main textarea with enhanced features
         const textarea = createElement('textarea', 'text-input-area');
         textarea.placeholder = 'Enter your available ingredients (e.g., tomatoes, cheese, pasta, chicken, onions, garlic...)';
         textarea.rows = 6;
         textarea.maxLength = this.maxLength;
         textarea.setAttribute('aria-label', 'Enter your available ingredients');
+        textarea.setAttribute('aria-describedby', 'ingredient-help');
         
-        // Create helpful hints section
+        // Create helpful hints section with enhanced guidance
         const hintsSection = createElement('div', 'input-hints');
         hintsSection.innerHTML = `
-            <div class="hints-title">💡 Helpful Tips:</div>
-            <ul class="hints-list">
-                <li>Separate ingredients with commas</li>
-                <li>Be specific (e.g., "fresh basil" instead of just "herbs")</li>
-                <li>Include quantities if you prefer (e.g., "2 tomatoes")</li>
-                <li>Don't worry about exact spelling - we'll understand!</li>
-            </ul>
+            <div class="help-text" id="ingredient-help">
+                <span class="help-icon">💡</span>
+                <div>
+                    <strong>Pro Tips:</strong>
+                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1rem;">
+                        <li>Separate ingredients with commas</li>
+                        <li>Be specific (e.g., "fresh basil" instead of just "herbs")</li>
+                        <li>Include quantities if you prefer (e.g., "2 tomatoes")</li>
+                        <li>Use <kbd>Ctrl+Enter</kbd> to quickly find recipes</li>
+                    </ul>
+                </div>
+            </div>
         `;
         
-        // Create character counter
-        const counterSection = createElement('div', 'input-counter');
-        counterSection.innerHTML = `
-            <span class="char-count">0</span>/<span class="char-limit">${this.maxLength}</span> characters
-        `;
-        
-        // Create suggestions section
+        // Create suggestions section with tooltips
         const suggestionsSection = createElement('div', 'input-suggestions');
         suggestionsSection.innerHTML = `
             <div class="suggestions-title">🔤 Quick Add:</div>
             <div class="suggestions-tags" role="list" aria-label="Common ingredient suggestions">
                 ${this.getCommonIngredients().map(ingredient => 
-                    `<button class="suggestion-tag" type="button" data-ingredient="${ingredient}" aria-label="Add ${ingredient}">${ingredient}</button>`
+                    `<button class="suggestion-tag interactive-element" type="button" data-ingredient="${ingredient}" aria-label="Add ${ingredient}" title="Click to add ${ingredient}">${ingredient}</button>`
                 ).join('')}
             </div>
         `;
         
-        // Event listeners
+        // Setup form field structure
+        formField.appendChild(textarea);
+        
+        // Event listeners with debounced validation
         addEvent(textarea, 'input', (e) => {
             this.value = e.target.value;
-            this.updateCharacterCount();
-            this.validateInput();
+            this.handleInputChange();
         });
         
         addEvent(textarea, 'paste', (e) => {
-            // Small delay to let paste complete
             setTimeout(() => {
                 this.value = textarea.value;
-                this.updateCharacterCount();
-                this.validateInput();
+                this.handleInputChange();
             }, 10);
         });
         
-        // Add suggestion tag click handlers
+        addEvent(textarea, 'blur', () => {
+            this.validateInput(true); // Force validation on blur
+        });
+        
+        addEvent(textarea, 'focus', () => {
+            // Show helpful tooltip on focus
+            if (this.value.length === 0) {
+                TooltipSystem.showTemporary(textarea, 'Start typing your ingredients separated by commas', 3000);
+            }
+        });
+        
+        // Add suggestion tag click handlers with feedback
         addEvent(suggestionsSection, 'click', (e) => {
             if (e.target.classList.contains('suggestion-tag')) {
                 const ingredient = e.target.getAttribute('data-ingredient');
                 this.addIngredient(ingredient);
+                
+                // Show feedback
+                NotificationSystem.success(`Added "${ingredient}" to your ingredients list`, {
+                    duration: 2000
+                });
+            }
+        });
+        
+        // Keyboard shortcuts for suggestions
+        addEvent(suggestionsSection, 'keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.target.click();
             }
         });
         
         // Store references
         this.textarea = textarea;
-        this.counterElement = counterSection.querySelector('.char-count');
+        this.formField = formField;
+        
+        // Initialize character counter
+        this.characterCounter = CharacterCounter.create(textarea, this.maxLength, {
+            warningThreshold: 0.8,
+            showAlways: false
+        });
         
         // Append all elements
         this.element.appendChild(header);
-        this.element.appendChild(textarea);
-        this.element.appendChild(counterSection);
+        this.element.appendChild(formField);
         this.element.appendChild(hintsSection);
         this.element.appendChild(suggestionsSection);
         
         this.container.appendChild(this.element);
+    }
+    
+    handleInputChange() {
+        // Clear existing validation timeout
+        if (this.validationTimeout) {
+            clearTimeout(this.validationTimeout);
+        }
+        
+        // Update character counter
+        if (this.characterCounter) {
+            this.characterCounter.update();
+        }
+        
+        // Debounced validation (wait 500ms after user stops typing)
+        this.validationTimeout = setTimeout(() => {
+            this.validateInput();
+        }, 500);
     }
     
     getCommonIngredients() {
@@ -382,40 +433,40 @@ class TextInputComponent extends Component {
             ingredients.push(ingredient);
             this.textarea.value = ingredients.join(', ');
             this.value = this.textarea.value;
-            this.updateCharacterCount();
-            this.validateInput();
+            this.handleInputChange();
             
             // Focus back to textarea
             this.textarea.focus();
+        } else {
+            // Show warning if ingredient already exists
+            NotificationSystem.warning(`"${ingredient}" is already in your list`, {
+                duration: 2000
+            });
         }
     }
     
-    updateCharacterCount() {
-        const length = this.textarea.value.length;
-        this.counterElement.textContent = length;
-        
-        // Update counter color based on usage
-        const counterSection = this.counterElement.parentElement;
-        removeClass(counterSection, 'warning danger');
-        
-        if (length > this.maxLength * 0.9) {
-            addClass(counterSection, 'danger');
-        } else if (length > this.maxLength * 0.75) {
-            addClass(counterSection, 'warning');
-        }
-    }
-    
-    validateInput() {
+    validateInput(forceValidation = false) {
         const value = this.textarea.value.trim();
-        const isValid = value.length > 0 && value.length <= this.maxLength;
         
-        // Update textarea styling
-        removeClass(this.textarea, 'invalid valid');
-        if (value.length > 0) {
-            addClass(this.textarea, isValid ? 'valid' : 'invalid');
+        // Only validate if there's content or forced
+        if (!forceValidation && value.length === 0) {
+            // Remove any validation state for empty input
+            removeClass(this.formField, 'has-error', 'has-success', 'has-warning');
+            return { isValid: true, message: '' };
         }
         
-        return isValid;
+        // Run validation
+        const validation = ValidationSystem.validateField(
+            this.textarea,
+            [
+                ValidationSystem.rules.required,
+                ValidationSystem.rules.maxLength(this.maxLength),
+                ValidationSystem.rules.ingredientList
+            ],
+            value
+        );
+        
+        return validation;
     }
     
     getValue() {
@@ -431,8 +482,37 @@ class TextInputComponent extends Component {
         if (this.textarea) {
             this.textarea.value = '';
             this.value = '';
-            this.updateCharacterCount();
-            removeClass(this.textarea, 'invalid valid');
+            
+            // Reset validation state
+            removeClass(this.formField, 'has-error', 'has-success', 'has-warning');
+            
+            // Update character counter
+            if (this.characterCounter) {
+                this.characterCounter.update();
+            }
+            
+            // Clear any validation messages
+            const existingMessage = this.formField.querySelector('.validation-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+        }
+    }
+    
+    // Task 7: Enhanced validation method for external use
+    isValid() {
+        const validation = this.validateInput(true);
+        return validation.isValid;
+    }
+    
+    // Task 7: Show loading state
+    setLoading(isLoading, message = 'Processing...') {
+        if (isLoading) {
+            LoadingOverlay.show(this.element, message);
+            this.textarea.disabled = true;
+        } else {
+            LoadingOverlay.hide(this.element);
+            this.textarea.disabled = false;
         }
     }
 }
@@ -445,24 +525,29 @@ class ImageUploadComponent extends Component {
         this.maxFiles = 5;
         this.maxFileSize = 5 * 1024 * 1024; // 5MB
         this.isUploading = false;
+        this.validationState = { isValid: false, message: '' };
         this.render();
     }
     
     render() {
         this.element = createElement('div', 'image-upload-container');
         
-        // Create header with instructions
+        // Create form field wrapper
+        const formField = createElement('div', 'form-field');
+        
+        // Create header with instructions and tooltip
         const header = createElement('div', 'input-header');
         header.innerHTML = `
             <h4>📷 Upload Photos</h4>
             <p>Share photos of your fridge, pantry, or ingredients</p>
         `;
         
-        // Create upload area
-        const uploadArea = createElement('div', 'image-upload-area');
+        // Create upload area with enhanced accessibility
+        const uploadArea = createElement('div', 'image-upload-area upload-area interactive-element');
         uploadArea.setAttribute('role', 'button');
         uploadArea.setAttribute('tabindex', '0');
         uploadArea.setAttribute('aria-label', 'Upload images by clicking or dragging files here');
+        uploadArea.setAttribute('aria-describedby', 'upload-help');
         uploadArea.innerHTML = `
             <div class="upload-content">
                 <div class="upload-icon">📷</div>
@@ -481,31 +566,34 @@ class ImageUploadComponent extends Component {
         fileInput.style.display = 'none';
         fileInput.setAttribute('aria-label', 'Select image files');
         
-        // Create upload tips
+        // Create upload tips with help text
         const tipsSection = createElement('div', 'upload-tips');
         tipsSection.innerHTML = `
-            <div class="tips-title">📸 Photo Tips:</div>
-            <ul class="tips-list">
-                <li>Take clear, well-lit photos</li>
-                <li>Show ingredient labels clearly</li>
-                <li>Include multiple angles if helpful</li>
-                <li>Don't worry about organization - we'll identify everything!</li>
-            </ul>
-        `;
-        
-        // Create progress indicator
-        const progressSection = createElement('div', 'upload-progress hidden');
-        progressSection.innerHTML = `
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
+            <div class="help-text" id="upload-help">
+                <span class="help-icon">📸</span>
+                <div>
+                    <strong>Photo Tips:</strong>
+                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1rem;">
+                        <li>Take clear, well-lit photos</li>
+                        <li>Show ingredient labels clearly</li>
+                        <li>Include multiple angles if helpful</li>
+                        <li>Supported formats: JPG, PNG, GIF, WebP (max 5MB each)</li>
+                    </ul>
+                </div>
             </div>
-            <div class="progress-text">Uploading...</div>
         `;
         
-        // Event listeners
+        // Setup form field structure
+        formField.appendChild(uploadArea);
+        
+        // Event listeners with enhanced feedback
         addEvent(uploadArea, 'click', () => {
             if (!this.isUploading && this.uploadedFiles.length < this.maxFiles) {
                 fileInput.click();
+            } else if (this.uploadedFiles.length >= this.maxFiles) {
+                NotificationSystem.warning(`You can only upload ${this.maxFiles} photos maximum`, {
+                    duration: 3000
+                });
             }
         });
         
@@ -518,7 +606,7 @@ class ImageUploadComponent extends Component {
         
         addEvent(fileInput, 'change', (e) => this.handleFiles(e.target.files));
         
-        // Drag and drop events
+        // Enhanced drag and drop with visual feedback
         addEvent(uploadArea, 'dragover', (e) => {
             e.preventDefault();
             if (!this.isUploading && this.uploadedFiles.length < this.maxFiles) {
@@ -527,7 +615,6 @@ class ImageUploadComponent extends Component {
         });
         
         addEvent(uploadArea, 'dragleave', (e) => {
-            // Only remove dragover if we're actually leaving the upload area
             if (!uploadArea.contains(e.relatedTarget)) {
                 removeClass(uploadArea, 'dragover');
             }
@@ -544,12 +631,11 @@ class ImageUploadComponent extends Component {
         // Store references
         this.uploadArea = uploadArea;
         this.fileInput = fileInput;
-        this.progressSection = progressSection;
+        this.formField = formField;
         
         // Append elements
         this.element.appendChild(header);
-        this.element.appendChild(uploadArea);
-        this.element.appendChild(progressSection);
+        this.element.appendChild(formField);
         this.element.appendChild(tipsSection);
         this.element.appendChild(fileInput);
         
@@ -561,25 +647,35 @@ class ImageUploadComponent extends Component {
         
         const remainingSlots = this.maxFiles - this.uploadedFiles.length;
         if (remainingSlots <= 0) {
-            handleError(null, `Maximum ${this.maxFiles} photos allowed`);
+            NotificationSystem.error(`Maximum ${this.maxFiles} photos allowed`, {
+                title: 'Upload Limit Reached'
+            });
             return;
         }
         
         const filesToProcess = Array.from(files).slice(0, remainingSlots);
         const validFiles = [];
+        const errors = [];
         
+        // Validate each file
         for (const file of filesToProcess) {
-            if (!validators.isValidImageFile(file)) {
-                handleError(null, `${file.name} is not a valid image file`);
-                continue;
+            const validation = ValidationSystem.rules.imageFile(file);
+            if (validation.isValid) {
+                validFiles.push(file);
+            } else {
+                errors.push(`${file.name}: ${validation.message}`);
             }
-            if (file.size > this.maxFileSize) {
-                handleError(null, `${file.name} is too large (max 5MB)`);
-                continue;
-            }
-            validFiles.push(file);
         }
         
+        // Show errors if any
+        if (errors.length > 0) {
+            NotificationSystem.error(errors.join('<br>'), {
+                title: 'Invalid Files',
+                duration: 5000
+            });
+        }
+        
+        // Upload valid files
         if (validFiles.length > 0) {
             this.uploadFiles(validFiles);
         }
@@ -590,55 +686,47 @@ class ImageUploadComponent extends Component {
     
     async uploadFiles(files) {
         this.isUploading = true;
-        this.showProgress();
+        this.setLoading(true, 'Preparing upload...');
         
         try {
-            // Simulate upload progress
+            // Create progress indicator
+            const progressIndicator = ProgressSystem.create(this.formField, { indeterminate: false });
+            
+            // Process files with progress updates
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
+                const progress = ((i + 1) / files.length) * 100;
                 
                 // Update progress
-                const progress = ((i + 1) / files.length) * 100;
-                this.updateProgress(progress, `Uploading ${file.name}...`);
+                progressIndicator.setProgress(progress);
+                LoadingOverlay.updateMessage(this.element, `Uploading ${file.name}...`);
                 
-                // Simulate upload delay
-                await new Promise(resolve => setTimeout(resolve, 500));
+                // Simulate upload delay (in real app, this would be actual upload)
+                await new Promise(resolve => setTimeout(resolve, 800));
                 
                 // Add file to uploaded files
                 this.uploadedFiles.push(file);
             }
             
-            this.hideProgress();
+            // Success feedback
+            NotificationSystem.success(`Successfully uploaded ${files.length} photo${files.length > 1 ? 's' : ''}`, {
+                title: 'Upload Complete'
+            });
+            
+            // Clean up
+            progressIndicator.remove();
+            this.setLoading(false);
             this.displayUploadedFiles();
             this.updateUploadAreaState();
+            this.validateFiles();
             
         } catch (error) {
-            handleError(error, 'Failed to upload files');
-            this.hideProgress();
+            NotificationSystem.error('Failed to upload files. Please try again.', {
+                title: 'Upload Error'
+            });
+            this.setLoading(false);
         } finally {
             this.isUploading = false;
-        }
-    }
-    
-    showProgress() {
-        removeClass(this.progressSection, 'hidden');
-        addClass(this.uploadArea, 'uploading');
-    }
-    
-    hideProgress() {
-        addClass(this.progressSection, 'hidden');
-        removeClass(this.uploadArea, 'uploading');
-    }
-    
-    updateProgress(percentage, text) {
-        const progressFill = this.progressSection.querySelector('.progress-fill');
-        const progressText = this.progressSection.querySelector('.progress-text');
-        
-        if (progressFill) {
-            progressFill.style.width = `${percentage}%`;
-        }
-        if (progressText) {
-            progressText.textContent = text;
         }
     }
     
@@ -664,6 +752,13 @@ class ImageUploadComponent extends Component {
             `;
             removeClass(this.uploadArea, 'disabled');
         }
+        
+        // Update accessibility
+        this.uploadArea.setAttribute('aria-label', 
+            isMaxFiles ? 'Maximum photos uploaded' : 
+            hasFiles ? `Add more photos (${this.maxFiles - this.uploadedFiles.length} remaining)` :
+            'Upload images by clicking or dragging files here'
+        );
     }
     
     displayUploadedFiles() {
@@ -671,7 +766,6 @@ class ImageUploadComponent extends Component {
         
         if (!previewContainer && this.uploadedFiles.length > 0) {
             previewContainer = createElement('div', 'preview-container');
-            // Insert after upload area
             this.uploadArea.parentNode.insertBefore(previewContainer, this.uploadArea.nextSibling);
         }
         
@@ -688,10 +782,15 @@ class ImageUploadComponent extends Component {
         const header = createElement('div', 'preview-header');
         header.innerHTML = `
             <h5>📋 Uploaded Photos (${this.uploadedFiles.length}/${this.maxFiles})</h5>
-            <button class="clear-all-btn" type="button" aria-label="Remove all photos">Clear All</button>
+            <button class="clear-all-btn interactive-element" type="button" aria-label="Remove all photos" title="Remove all photos">Clear All</button>
         `;
         
-        addEvent(header.querySelector('.clear-all-btn'), 'click', () => this.clearAll());
+        addEvent(header.querySelector('.clear-all-btn'), 'click', () => {
+            if (confirm('Are you sure you want to remove all photos?')) {
+                this.clearAll();
+                NotificationSystem.info('All photos removed');
+            }
+        });
         previewContainer.appendChild(header);
         
         // Add file previews
@@ -702,7 +801,7 @@ class ImageUploadComponent extends Component {
             preview.innerHTML = `
                 <div class="preview-image-container">
                     <img src="${URL.createObjectURL(file)}" alt="Uploaded image ${index + 1}" class="preview-image">
-                    <button class="remove-file" data-index="${index}" type="button" aria-label="Remove ${file.name}">×</button>
+                    <button class="remove-file interactive-element" data-index="${index}" type="button" aria-label="Remove ${file.name}" title="Remove ${file.name}">×</button>
                 </div>
                 <div class="preview-info">
                     <span class="file-name" title="${file.name}">${this.truncateFileName(file.name)}</span>
@@ -715,6 +814,11 @@ class ImageUploadComponent extends Component {
                 e.stopPropagation();
                 this.removeFile(index);
             });
+            
+            // Add tooltip for full filename
+            if (file.name.length > 15) {
+                TooltipSystem.create(preview.querySelector('.file-name'), file.name);
+            }
             
             previewGrid.appendChild(preview);
         });
@@ -740,13 +844,17 @@ class ImageUploadComponent extends Component {
     
     removeFile(index) {
         if (index >= 0 && index < this.uploadedFiles.length) {
-            // Revoke object URL to prevent memory leaks
             const file = this.uploadedFiles[index];
+            
+            // Revoke object URL to prevent memory leaks
             URL.revokeObjectURL(URL.createObjectURL(file));
             
             this.uploadedFiles.splice(index, 1);
             this.displayUploadedFiles();
             this.updateUploadAreaState();
+            this.validateFiles();
+            
+            NotificationSystem.info(`Removed "${file.name}"`);
         }
     }
     
@@ -759,6 +867,7 @@ class ImageUploadComponent extends Component {
         this.uploadedFiles = [];
         this.displayUploadedFiles();
         this.updateUploadAreaState();
+        this.validateFiles();
         
         // Reset upload area to original state
         const uploadContent = this.uploadArea.querySelector('.upload-content');
@@ -770,6 +879,42 @@ class ImageUploadComponent extends Component {
             <div class="upload-limit">Maximum ${this.maxFiles} photos</div>
         `;
         removeClass(this.uploadArea, 'disabled');
+    }
+    
+    // Task 7: Validation method
+    validateFiles() {
+        if (this.uploadedFiles.length === 0) {
+            this.validationState = { isValid: false, message: 'Please upload at least one photo' };
+            removeClass(this.formField, 'has-success', 'has-warning');
+            addClass(this.formField, 'has-error');
+            ValidationSystem.showValidationMessage(this.formField, this.validationState.message, 'error');
+        } else {
+            this.validationState = { isValid: true, message: `${this.uploadedFiles.length} photo${this.uploadedFiles.length > 1 ? 's' : ''} uploaded` };
+            removeClass(this.formField, 'has-error', 'has-warning');
+            addClass(this.formField, 'has-success');
+            ValidationSystem.showValidationMessage(this.formField, this.validationState.message, 'success');
+            ValidationSystem.showSuccessIndicator(this.formField);
+        }
+        
+        return this.validationState;
+    }
+    
+    // Task 7: Enhanced validation method for external use
+    isValid() {
+        return this.validateFiles().isValid;
+    }
+    
+    // Task 7: Loading state management
+    setLoading(isLoading, message = 'Processing photos...') {
+        if (isLoading) {
+            LoadingOverlay.show(this.element, message);
+            this.uploadArea.disabled = true;
+            addClass(this.uploadArea, 'disabled');
+        } else {
+            LoadingOverlay.hide(this.element);
+            this.uploadArea.disabled = false;
+            removeClass(this.uploadArea, 'disabled');
+        }
     }
     
     getValue() {

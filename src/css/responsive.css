@@ -257,3 +257,145 @@
         transition-duration: 0.01ms !important;
     }
 }
+
+/* ===========================
+   TASK 7: RESPONSIVE ENHANCEMENTS
+   =========================== */
+
+/* Keyboard Navigation Support */
+body.keyboard-navigation *:focus {
+    outline: 2px solid var(--primary-color) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px rgba(230, 126, 34, 0.2) !important;
+}
+
+/* Mobile Responsive for Task 7 Features */
+@media (max-width: 575.98px) {
+    /* Notifications */
+    .notification {
+        top: var(--spacing-sm);
+        right: var(--spacing-sm);
+        left: var(--spacing-sm);
+        max-width: none;
+        transform: translateY(-100%);
+    }
+    
+    .notification.show {
+        transform: translateY(0);
+    }
+    
+    /* Tooltips */
+    .tooltip {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        max-width: 280px;
+        white-space: normal;
+        text-align: center;
+    }
+    
+    .tooltip::after {
+        display: none; /* Hide arrow on mobile */
+    }
+    
+    /* Progress indicators */
+    .progress-container {
+        margin: var(--spacing-sm) 0;
+    }
+    
+    /* Loading overlays */
+    .loading-overlay {
+        padding: var(--spacing-md);
+    }
+    
+    .loading-text {
+        font-size: var(--font-size-sm);
+        margin-top: var(--spacing-sm);
+    }
+    
+    /* Character counter */
+    .character-counter {
+        font-size: var(--font-size-xs);
+        margin-top: var(--spacing-xs);
+    }
+    
+    /* Validation messages */
+    .validation-message {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs);
+    }
+    
+    /* Help text */
+    .help-text {
+        font-size: var(--font-size-xs);
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+    
+    .help-text ul {
+        margin-left: 0;
+        padding-left: var(--spacing-md);
+    }
+    
+    /* Interactive elements touch targets */
+    .interactive-element {
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
+/* Tablet responsive */
+@media (min-width: 576px) and (max-width: 991.98px) {
+    .notification {
+        max-width: 350px;
+    }
+    
+    .tooltip {
+        max-width: 200px;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .validation-message.error {
+        border: 2px solid var(--error-color);
+        background-color: white;
+    }
+    
+    .validation-message.success {
+        border: 2px solid var(--success-color);
+        background-color: white;
+    }
+    
+    .validation-message.warning {
+        border: 2px solid var(--warning-color);
+        background-color: white;
+    }
+    
+    .loading-spinner {
+        border-width: 4px;
+    }
+    
+    .tooltip {
+        border: 2px solid var(--text-primary);
+    }
+}
+
+/* Dark mode support preparation */
+@media (prefers-color-scheme: dark) {
+    .tooltip {
+        background-color: #2c3e50;
+        color: white;
+    }
+    
+    .notification {
+        background-color: #34495e;
+        color: white;
+        border-color: #4a5f7a;
+    }
+    
+    .loading-overlay {
+        background-color: rgba(44, 62, 80, 0.9);
+    }
+}

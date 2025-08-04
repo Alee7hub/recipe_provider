@@ -123,12 +123,106 @@ class RecipeProviderApp {
         const submitButton = $('#find-recipes-btn');
         addEvent(submitButton, 'click', this.handleSubmit);
         
-        // Add keyboard shortcuts
+        // Task 7: Enhanced keyboard shortcuts and navigation
         addEvent(document, 'keydown', (e) => {
+            // Ctrl+Enter to submit
             if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
                 this.handleSubmit();
             }
+            
+            // Ctrl+R to reset/clear all
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                this.reset();
+                NotificationSystem.info('All fields cleared', { duration: 2000 });
+            }
+            
+            // Escape to clear error states
+            if (e.key === 'Escape') {
+                this.clearErrorStates();
+            }
         });
+        
+        // Initialize keyboard navigation system
+        KeyboardNavigation.init();
+        
+        // Add tooltips to important elements
+        this.setupTooltips();
+        
+        // Setup form validation on submit button
+        this.setupSubmitButtonState();
+    }
+    
+    // Task 7: Setup helpful tooltips
+    setupTooltips() {
+        const submitButton = $('#find-recipes-btn');
+        if (submitButton) {
+            TooltipSystem.create(submitButton, 'Click to find recipes or press Ctrl+Enter');
+        }
+        
+        // Add tooltips to tab shortcuts
+        const tabs = document.querySelectorAll('.input-tab');
+        tabs.forEach((tab, index) => {
+            const method = tab.getAttribute('data-method');
+            const shortcut = `Ctrl+${index + 1}`;
+            TooltipSystem.create(tab, `Switch to ${method} input (${shortcut})`);
+        });
+    }
+    
+    // Task 7: Setup submit button state management
+    setupSubmitButtonState() {
+        const submitButton = $('#find-recipes-btn');
+        
+        // Add initial help text
+        const helpText = createElement('div', 'help-text');
+        helpText.innerHTML = `
+            <span class="help-icon">⌨️</span>
+            <span>Use <kbd>Ctrl+Enter</kbd> to quickly find recipes, or <kbd>Ctrl+R</kbd> to reset all fields</span>
+        `;
+        
+        submitButton.parentElement.appendChild(helpText);
+        
+        // Monitor input changes to update button state
+        const checkFormCompleteness = debounce(() => {
+            const activeComponent = this.inputComponents[this.currentInputMethod];
+            let hasInput = false;
+            
+            if (activeComponent && typeof activeComponent.getValue === 'function') {
+                const value = activeComponent.getValue();
+                if (this.currentInputMethod === 'text') {
+                    hasInput = !validators.isEmpty(value);
+                } else if (this.currentInputMethod === 'image') {
+                    hasInput = Array.isArray(value) && value.length > 0;
+                } else if (this.currentInputMethod === 'voice') {
+                    hasInput = !validators.isEmpty(value);
+                }
+            }
+            
+            // Update button appearance based on form state
+            if (hasInput) {
+                removeClass(submitButton, 'btn-secondary');
+                addClass(submitButton, 'btn-primary');
+                submitButton.innerHTML = '🔍 Find Recipes';
+            } else {
+                removeClass(submitButton, 'btn-primary');
+                addClass(submitButton, 'btn-secondary');
+                submitButton.innerHTML = '🔍 Find Recipes';
+            }
+        }, 300);
+        
+        // Monitor all input components for changes
+        Object.values(this.inputComponents).forEach(component => {
+            if (component.element) {
+                // Listen for various input events
+                addEvent(component.element, 'input', checkFormCompleteness);
+                addEvent(component.element, 'change', checkFormCompleteness);
+                addEvent(component.element, 'keyup', checkFormCompleteness);
+            }
+        });
+        
+        // Initial check
+        checkFormCompleteness();
     }
     
     handleInputMethodChange(methodId) {
@@ -205,15 +299,92 @@ class RecipeProviderApp {
     
     handleSubmit() {
         try {
-            const ingredients = this.getIngredients();
-            const cuisines = this.cuisineSelector.getValue();
+            // Clear any existing error states
+            this.clearErrorStates();
             
-            if (this.validateInput(ingredients, cuisines)) {
+            // Validate all inputs with enhanced feedback
+            if (this.validateAllInputs()) {
+                const ingredients = this.getIngredients();
+                const cuisines = this.cuisineSelector.getValue();
                 this.processRecipeSearch(ingredients, cuisines);
             }
         } catch (error) {
             handleError(error, 'Error processing your request');
+            NotificationSystem.error('Unable to process your request. Please try again.', {
+                title: 'Error'
+            });
         }
+    }
+    
+    // Task 7: Enhanced validation with detailed feedback
+    validateAllInputs() {
+        let isValid = true;
+        const validationResults = [];
+        
+        // Validate current input method
+        const activeComponent = this.inputComponents[this.currentInputMethod];
+        if (activeComponent && typeof activeComponent.isValid === 'function') {
+            const componentValid = activeComponent.isValid();
+            if (!componentValid) {
+                isValid = false;
+                validationResults.push(`Please complete the ${this.currentInputMethod} input`);
+            }
+        } else {
+            // Fallback validation for components without isValid method
+            const ingredients = this.getIngredients();
+            if (this.currentInputMethod === 'text' && validators.isEmpty(ingredients)) {
+                isValid = false;
+                validationResults.push('Please enter some ingredients');
+            } else if (this.currentInputMethod === 'image' && (!ingredients || ingredients.length === 0)) {
+                isValid = false;
+                validationResults.push('Please upload at least one image');
+            } else if (this.currentInputMethod === 'voice' && validators.isEmpty(ingredients)) {
+                isValid = false;
+                validationResults.push('Please speak some ingredients using voice input');
+            }
+        }
+        
+        // Validate cuisine selection (optional but show guidance)
+        const cuisines = this.cuisineSelector.getValue();
+        if (cuisines.length === 0) {
+            TooltipSystem.showTemporary(
+                $('#find-recipes-btn'),
+                'Tip: Select cuisine preferences for better results!',
+                3000
+            );
+        }
+        
+        // Show validation feedback
+        if (!isValid) {
+            NotificationSystem.error(validationResults.join('<br>'), {
+                title: 'Please Complete Required Fields',
+                duration: 5000
+            });
+            
+            // Focus the problematic input
+            this.focusActiveInput(activeComponent);
+        }
+        
+        return isValid;
+    }
+    
+    // Task 7: Clear error states
+    clearErrorStates() {
+        // Clear any existing validation messages
+        const errorContainer = $('#error-container');
+        if (errorContainer) {
+            errorContainer.style.display = 'none';
+        }
+        
+        // Clear form field error states
+        const errorFields = document.querySelectorAll('.form-field.has-error');
+        errorFields.forEach(field => {
+            removeClass(field, 'has-error');
+            const validationMessage = field.querySelector('.validation-message.error');
+            if (validationMessage) {
+                validationMessage.remove();
+            }
+        });
     }
     
     getIngredients() {
@@ -222,43 +393,142 @@ class RecipeProviderApp {
     }
     
     validateInput(ingredients, cuisines) {
-        // Check if ingredients are provided
-        if (this.currentInputMethod === 'text' && validators.isEmpty(ingredients)) {
-            handleError(null, 'Please enter some ingredients');
-            return false;
-        }
-        
-        if (this.currentInputMethod === 'image' && (!ingredients || ingredients.length === 0)) {
-            handleError(null, 'Please upload at least one image');
-            return false;
-        }
-        
-        if (this.currentInputMethod === 'voice' && validators.isEmpty(ingredients)) {
-            handleError(null, 'Please speak some ingredients using voice input');
-            return false;
-        }
-        
-        // Cuisine selection is optional, but show warning if none selected
-        if (cuisines.length === 0) {
-            console.log('No cuisine selected - will show all cuisine types');
-        }
-        
-        return true;
+        // This method is kept for backward compatibility
+        // Use validateAllInputs() for enhanced validation
+        return this.validateAllInputs();
     }
     
+    // Task 7: Enhanced recipe search with detailed loading states
     processRecipeSearch(ingredients, cuisines) {
         const submitButton = $('#find-recipes-btn');
-        loading.show(submitButton);
-        submitButton.textContent = '🔍 Searching...';
+        const activeComponent = this.inputComponents[this.currentInputMethod];
         
-        // Simulate API call with timeout
-        setTimeout(() => {
+        // Set loading state on submit button
+        addClass(submitButton, 'loading');
+        submitButton.disabled = true;
+        
+        // Set loading state on active input component
+        if (activeComponent && typeof activeComponent.setLoading === 'function') {
+            activeComponent.setLoading(true, 'Analyzing ingredients...');
+        }
+        
+        // Show global loading notification
+        const loadingNotification = NotificationSystem.info('Finding perfect recipes for you...', {
+            title: 'Searching Recipes',
+            duration: 0 // Don't auto-close
+        });
+        
+        // Create progress indicator
+        const progressIndicator = ProgressSystem.create(submitButton.parentElement, { 
+            indeterminate: true 
+        });
+        
+        // Simulate API call with realistic timing and progress updates
+        const steps = [
+            { message: 'Analyzing your ingredients...', delay: 800 },
+            { message: 'Searching recipe database...', delay: 600 },
+            { message: 'Matching with cuisine preferences...', delay: 500 },
+            { message: 'Finalizing recommendations...', delay: 400 }
+        ];
+        
+        let currentStep = 0;
+        const processStep = () => {
+            if (currentStep < steps.length) {
+                const step = steps[currentStep];
+                
+                // Update loading message
+                if (activeComponent && typeof activeComponent.setLoading === 'function') {
+                    activeComponent.setLoading(true, step.message);
+                }
+                
+                currentStep++;
+                setTimeout(processStep, step.delay);
+            } else {
+                // Complete the search
+                this.completeRecipeSearch(ingredients, cuisines, {
+                    submitButton,
+                    activeComponent,
+                    loadingNotification,
+                    progressIndicator
+                });
+            }
+        };
+        
+        // Start the process
+        setTimeout(processStep, 500);
+    }
+    
+    // Task 7: Complete recipe search with success feedback
+    completeRecipeSearch(ingredients, cuisines, loadingElements) {
+        const { submitButton, activeComponent, loadingNotification, progressIndicator } = loadingElements;
+        
+        try {
             const mockRecipes = this.generateMockRecipes(ingredients, cuisines);
+            
+            // Clean up loading states
+            removeClass(submitButton, 'loading');
+            submitButton.disabled = false;
+            
+            if (activeComponent && typeof activeComponent.setLoading === 'function') {
+                activeComponent.setLoading(false);
+            }
+            
+            loadingNotification.close();
+            progressIndicator.remove();
+            
+            // Display results
             this.displayRecipes(mockRecipes);
             
-            loading.hide(submitButton);
-            submitButton.innerHTML = '🔍 Find Recipes';
-        }, 1500);
+            // Show success feedback
+            if (mockRecipes.length > 0) {
+                NotificationSystem.success(
+                    `Found ${mockRecipes.length} delicious recipe${mockRecipes.length > 1 ? 's' : ''} for you!`,
+                    {
+                        title: 'Recipes Found',
+                        duration: 4000
+                    }
+                );
+            } else {
+                NotificationSystem.warning(
+                    'No recipes found with your current ingredients and preferences. Try different ingredients or cuisine options.',
+                    {
+                        title: 'No Results',
+                        duration: 6000
+                    }
+                );
+            }
+            
+        } catch (error) {
+            // Handle errors gracefully
+            this.handleSearchError(error, loadingElements);
+        }
+    }
+    
+    // Task 7: Error handling for recipe search
+    handleSearchError(error, loadingElements) {
+        const { submitButton, activeComponent, loadingNotification, progressIndicator } = loadingElements;
+        
+        // Clean up loading states
+        removeClass(submitButton, 'loading');
+        submitButton.disabled = false;
+        
+        if (activeComponent && typeof activeComponent.setLoading === 'function') {
+            activeComponent.setLoading(false);
+        }
+        
+        loadingNotification.close();
+        progressIndicator.remove();
+        
+        // Show error feedback
+        NotificationSystem.error(
+            'Unable to search recipes at the moment. Please check your input and try again.',
+            {
+                title: 'Search Failed',
+                duration: 5000
+            }
+        );
+        
+        handleError(error, 'Recipe search failed');
     }
     
     generateMockRecipes(ingredients, cuisines) {
@@ -395,7 +665,8 @@ let app;
 if (typeof window !== 'undefined') {
     app = new RecipeProviderApp();
     
-    // Expose app globally for debugging
+    // Expose app globally for debugging and keyboard navigation
+    window.recipeApp = app;
     window.RecipeProviderApp = app;
 }
 
