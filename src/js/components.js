@@ -698,20 +698,55 @@ class ImageUploadComponent extends Component {
                 const progress = ((i + 1) / files.length) * 100;
                 
                 // Update progress
-                progressIndicator.setProgress(progress);
+                progressIndicator.setProgress(progress * 0.5); // First half for optimization
+                LoadingOverlay.updateMessage(this.element, `Optimizing ${file.name}...`);
+                
+                // Task 10: Optimize image if needed
+                let processedFile = file;
+                if (ImageOptimization.shouldOptimize(file)) {
+                    try {
+                        processedFile = await ImageOptimization.compressImage(file, 800, 0.85);
+                        const sizeSaved = file.size - processedFile.size;
+                        const percentSaved = Math.round((sizeSaved / file.size) * 100);
+                        
+                        if (percentSaved > 10) {
+                            NotificationSystem.info(
+                                `Optimized ${file.name} - saved ${Math.round(sizeSaved / 1024)}KB (${percentSaved}%)`,
+                                { title: 'Image Optimized', duration: 3000 }
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('Image optimization failed, using original:', error);
+                        processedFile = file;
+                    }
+                }
+                
+                // Update progress for upload simulation
+                progressIndicator.setProgress(progress * 0.8);
                 LoadingOverlay.updateMessage(this.element, `Uploading ${file.name}...`);
                 
                 // Simulate upload delay (in real app, this would be actual upload)
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 600));
                 
-                // Add file to uploaded files
-                this.uploadedFiles.push(file);
+                // Add processed file to uploaded files
+                this.uploadedFiles.push({
+                    original: file,
+                    processed: processedFile,
+                    uploadDate: new Date()
+                });
+                
+                progressIndicator.setProgress(progress);
             }
             
             // Success feedback
             NotificationSystem.success(`Successfully uploaded ${files.length} photo${files.length > 1 ? 's' : ''}`, {
                 title: 'Upload Complete'
             });
+            
+            // Announce to screen readers
+            if (window.announceStatus) {
+                window.announceStatus(`${files.length} image${files.length > 1 ? 's' : ''} uploaded successfully`);
+            }
             
             // Clean up
             progressIndicator.remove();
@@ -796,16 +831,23 @@ class ImageUploadComponent extends Component {
         // Add file previews
         const previewGrid = createElement('div', 'preview-grid');
         
-        this.uploadedFiles.forEach((file, index) => {
+        this.uploadedFiles.forEach((fileData, index) => {
+            // Handle both old format (direct file) and new format (object with original/processed)
+            const file = fileData.processed || fileData.original || fileData;
+            const fileName = file.name;
+            const fileSize = file.size;
+            
             const preview = createElement('div', 'file-preview');
             preview.innerHTML = `
                 <div class="preview-image-container">
-                    <img src="${URL.createObjectURL(file)}" alt="Uploaded image ${index + 1}" class="preview-image">
-                    <button class="remove-file interactive-element" data-index="${index}" type="button" aria-label="Remove ${file.name}" title="Remove ${file.name}">×</button>
+                    <img src="${URL.createObjectURL(file)}" alt="Uploaded ingredient image: ${fileName}" class="preview-image" loading="lazy">
+                    <button class="remove-file interactive-element" data-index="${index}" type="button" aria-label="Remove uploaded image ${fileName}" title="Remove ${fileName}">×</button>
                 </div>
                 <div class="preview-info">
-                    <span class="file-name" title="${file.name}">${this.truncateFileName(file.name)}</span>
-                    <span class="file-size">${this.formatFileSize(file.size)}</span>
+                    <span class="file-name" title="${fileName}">${this.truncateFileName(fileName)}</span>
+                    <span class="file-size">${this.formatFileSize(fileSize)}</span>
+                    ${fileData.processed && fileData.original && fileData.processed.size < fileData.original.size ? 
+                        `<span class="optimization-badge" title="Image optimized">⚡ Optimized</span>` : ''}
                 </div>
             `;
             
@@ -918,7 +960,13 @@ class ImageUploadComponent extends Component {
     }
     
     getValue() {
-        return this.uploadedFiles;
+        // Return processed files for better performance, fall back to original files
+        return this.uploadedFiles.map(fileData => {
+            if (typeof fileData === 'object' && fileData.processed) {
+                return fileData.processed;
+            }
+            return fileData.original || fileData;
+        });
     }
     
     clear() {

@@ -1367,3 +1367,212 @@ input, textarea, select {
         color: black !important;
     }
 }
+
+/* ===========================
+   TASK 10: ADVANCED UI FEATURES
+   =========================== */
+
+/* Skip Links for Accessibility */
+.skip-links {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    z-index: 10000;
+}
+
+.skip-link {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    background: var(--primary-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    border-radius: 0 0 4px 0;
+    font-weight: var(--font-weight-medium);
+    transition: all 0.3s ease;
+}
+
+.skip-link:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    left: 0;
+    top: 0;
+    overflow: visible;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Screen Reader Only Content */
+.screen-reader-announcer,
+.status-region {
+    position: absolute !important;
+    left: -10000px !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(1px, 1px, 1px, 1px) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+
+/* Keyboard Navigation Enhancement */
+.keyboard-navigation *:focus {
+    outline: 2px solid var(--primary-color) !important;
+    outline-offset: 2px !important;
+    border-radius: 4px;
+}
+
+.keyboard-navigation *:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+/* High Contrast Mode Support */
+.high-contrast {
+    --primary-color: #000000;
+    --text-primary: #000000;
+    --bg-primary: #ffffff;
+    --border-medium: #000000;
+}
+
+.high-contrast .btn {
+    border: 2px solid #000000 !important;
+}
+
+.high-contrast .recipe-card {
+    border: 2px solid #000000 !important;
+    background: #ffffff !important;
+}
+
+/* Reduced Motion Support */
+.reduced-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/* Image Optimization Badge */
+.optimization-badge {
+    display: inline-block;
+    background: var(--success-color);
+    color: white;
+    padding: 0.125rem 0.25rem;
+    border-radius: 3px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    margin-top: 0.25rem;
+}
+
+/* Performance Loading States */
+.performance-warning {
+    background: var(--warning-bg);
+    border: 1px solid var(--warning-border);
+    color: var(--warning-color);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.performance-warning::before {
+    content: "⚠️ ";
+    margin-right: 0.5rem;
+}
+
+/* Browser Compatibility Warning */
+.compatibility-warning {
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    color: var(--error-color);
+    padding: 1rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-weight: var(--font-weight-medium);
+}
+
+.compatibility-warning::before {
+    content: "🛠️ ";
+    margin-right: 0.5rem;
+}
+
+/* Lazy Loading Image States */
+img[data-src] {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+img[data-src].loaded,
+img.loaded {
+    opacity: 1;
+}
+
+/* Focus Management */
+.focus-trap {
+    position: relative;
+}
+
+.focus-trap::before,
+.focus-trap::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 1px;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* Enhanced Touch Targets for Mobile */
+@media (hover: none) and (pointer: coarse) {
+    .interactive-element {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    .btn {
+        min-height: 48px;
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Dark Mode Preference Support */
+@media (prefers-color-scheme: dark) {
+    body:not(.light-mode) {
+        --bg-primary: #1a1a1a;
+        --bg-secondary: #2d2d2d;
+        --bg-accent: #3a3a3a;
+        --text-primary: #ffffff;
+        --text-secondary: #cccccc;
+        --border-light: #444444;
+        --border-medium: #666666;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+    }
+}
+
+/* Print Styles for Accessibility */
+@media print {
+    .skip-links,
+    .notification,
+    .loading-overlay,
+    .interactive-element:not(.recipe-card) {
+        display: none !important;
+    }
+    
+    .recipe-card {
+        break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+    
+    .recipe-image {
+        max-height: 200px;
+        object-fit: cover;
+    }
+    
+    body {
+        background: white !important;
+        color: black !important;
+    }
+}

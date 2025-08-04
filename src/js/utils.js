@@ -600,6 +600,404 @@ const CharacterCounter = {
     }
 };
 
+// ===========================
+// TASK 10: ADVANCED UI FEATURES
+// ===========================
+
+// Browser Compatibility Detection
+const BrowserCompatibility = {
+    // Feature detection
+    features: {
+        webSpeech: typeof window !== 'undefined' && 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window,
+        fileAPI: typeof window !== 'undefined' && 'FileReader' in window,
+        dragDrop: typeof window !== 'undefined' && 'draggable' in document.createElement('div'),
+        localStorage: typeof window !== 'undefined' && 'localStorage' in window,
+        requestAnimationFrame: typeof window !== 'undefined' && 'requestAnimationFrame' in window,
+        intersectionObserver: typeof window !== 'undefined' && 'IntersectionObserver' in window,
+        webGL: (() => {
+            if (typeof window === 'undefined') return false;
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+            } catch (e) {
+                return false;
+            }
+        })()
+    },
+    
+    // Check if browser supports modern features
+    isModernBrowser: () => {
+        const requiredFeatures = ['fileAPI', 'localStorage', 'requestAnimationFrame'];
+        return requiredFeatures.every(feature => BrowserCompatibility.features[feature]);
+    },
+    
+    // Get browser info
+    getBrowserInfo: () => {
+        if (typeof window === 'undefined') return { name: 'unknown', version: 'unknown' };
+        
+        const userAgent = navigator.userAgent;
+        let browserName = 'Unknown';
+        let browserVersion = 'Unknown';
+        
+        if (userAgent.indexOf('Chrome') > -1) {
+            browserName = 'Chrome';
+            browserVersion = userAgent.match(/Chrome\/(\d+)/)?.[1] || 'Unknown';
+        } else if (userAgent.indexOf('Firefox') > -1) {
+            browserName = 'Firefox';
+            browserVersion = userAgent.match(/Firefox\/(\d+)/)?.[1] || 'Unknown';
+        } else if (userAgent.indexOf('Safari') > -1) {
+            browserName = 'Safari';
+            browserVersion = userAgent.match(/Version\/(\d+)/)?.[1] || 'Unknown';
+        } else if (userAgent.indexOf('Edge') > -1) {
+            browserName = 'Edge';
+            browserVersion = userAgent.match(/Edge\/(\d+)/)?.[1] || 'Unknown';
+        }
+        
+        return { name: browserName, version: browserVersion };
+    },
+    
+    // Show compatibility warnings
+    showCompatibilityWarnings: () => {
+        const warnings = [];
+        
+        if (!BrowserCompatibility.features.webSpeech) {
+            warnings.push('Voice input is not supported in this browser. Please use text or image input instead.');
+        }
+        
+        if (!BrowserCompatibility.features.fileAPI) {
+            warnings.push('File upload is not supported in this browser. Please use text or voice input instead.');
+        }
+        
+        if (!BrowserCompatibility.isModernBrowser()) {
+            warnings.push('Some features may not work properly in this browser. Please consider updating to a modern browser.');
+        }
+        
+        warnings.forEach(warning => {
+            NotificationSystem.warning(warning, {
+                title: 'Browser Compatibility',
+                duration: 8000
+            });
+        });
+        
+        return warnings;
+    }
+};
+
+// Image Optimization Utilities
+const ImageOptimization = {
+    // Compress image while maintaining quality
+    compressImage: (file, maxWidth = 800, quality = 0.8) => {
+        return new Promise((resolve) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.onload = () => {
+                // Calculate new dimensions
+                let { width, height } = img;
+                
+                if (width > maxWidth) {
+                    height = (height * maxWidth) / width;
+                    width = maxWidth;
+                }
+                
+                // Set canvas dimensions
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Draw and compress
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                canvas.toBlob(
+                    (blob) => {
+                        resolve(new File([blob], file.name, {
+                            type: file.type,
+                            lastModified: Date.now()
+                        }));
+                    },
+                    file.type,
+                    quality
+                );
+            };
+            
+            img.src = URL.createObjectURL(file);
+        });
+    },
+    
+    // Generate multiple image sizes for responsive loading
+    generateResponsiveImages: async (file) => {
+        const sizes = [
+            { name: 'thumbnail', width: 150 },
+            { name: 'small', width: 400 },
+            { name: 'medium', width: 800 },
+            { name: 'large', width: 1200 }
+        ];
+        
+        const images = {};
+        
+        for (const size of sizes) {
+            images[size.name] = await ImageOptimization.compressImage(file, size.width);
+        }
+        
+        return images;
+    },
+    
+    // Check if image needs optimization
+    shouldOptimize: (file, maxSizeMB = 2) => {
+        const maxSizeBytes = maxSizeMB * 1024 * 1024;
+        return file.size > maxSizeBytes;
+    }
+};
+
+// Performance Monitoring
+const PerformanceMonitor = {
+    // Track performance metrics
+    metrics: {
+        loadTime: 0,
+        renderTime: 0,
+        interactionTime: 0,
+        memoryUsage: 0
+    },
+    
+    // Start performance monitoring
+    start: () => {
+        if (typeof performance === 'undefined') return;
+        
+        PerformanceMonitor.metrics.loadTime = performance.now();
+        
+        // Monitor memory usage if available
+        if (performance.memory) {
+            PerformanceMonitor.metrics.memoryUsage = performance.memory.usedJSHeapSize;
+        }
+        
+        // Track first interaction
+        const trackFirstInteraction = () => {
+            PerformanceMonitor.metrics.interactionTime = performance.now() - PerformanceMonitor.metrics.loadTime;
+            document.removeEventListener('click', trackFirstInteraction);
+            document.removeEventListener('keydown', trackFirstInteraction);
+        };
+        
+        document.addEventListener('click', trackFirstInteraction);
+        document.addEventListener('keydown', trackFirstInteraction);
+    },
+    
+    // Mark when app is ready
+    markReady: () => {
+        if (typeof performance === 'undefined') return;
+        
+        PerformanceMonitor.metrics.renderTime = performance.now() - PerformanceMonitor.metrics.loadTime;
+        
+        // Log performance metrics
+        console.log('Performance Metrics:', PerformanceMonitor.metrics);
+        
+        // Show warning if performance is poor
+        if (PerformanceMonitor.metrics.renderTime > 3000) {
+            NotificationSystem.warning('The app took longer than expected to load. Consider refreshing if you experience issues.', {
+                title: 'Performance Notice',
+                duration: 5000
+            });
+        }
+    },
+    
+    // Monitor resource usage
+    monitorResources: () => {
+        if (typeof performance === 'undefined' || !performance.getEntriesByType) return;
+        
+        const resources = performance.getEntriesByType('resource');
+        const slowResources = resources.filter(resource => resource.duration > 1000);
+        
+        if (slowResources.length > 0) {
+            console.warn('Slow loading resources detected:', slowResources);
+        }
+        
+        return {
+            total: resources.length,
+            slow: slowResources.length,
+            resources: resources
+        };
+    }
+};
+
+// Lazy Loading System
+const LazyLoading = {
+    // Initialize intersection observer for lazy loading
+    init: () => {
+        if (!BrowserCompatibility.features.intersectionObserver) {
+            // Fallback for browsers without IntersectionObserver
+            LazyLoading.fallbackLazyLoad();
+            return;
+        }
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    const src = img.getAttribute('data-src');
+                    
+                    if (src) {
+                        img.src = src;
+                        img.removeAttribute('data-src');
+                        addClass(img, 'loaded');
+                        observer.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            rootMargin: '50px 0px',
+            threshold: 0.1
+        });
+        
+        // Observe all images with data-src
+        const lazyImages = document.querySelectorAll('img[data-src]');
+        lazyImages.forEach(img => observer.observe(img));
+        
+        return observer;
+    },
+    
+    // Fallback lazy loading for older browsers
+    fallbackLazyLoad: () => {
+        const lazyImages = document.querySelectorAll('img[data-src]');
+        
+        const loadImage = (img) => {
+            const src = img.getAttribute('data-src');
+            if (src) {
+                img.src = src;
+                img.removeAttribute('data-src');
+                addClass(img, 'loaded');
+            }
+        };
+        
+        // Load images when they come into view
+        const checkImages = throttle(() => {
+            lazyImages.forEach(img => {
+                if (img.getAttribute('data-src')) {
+                    const rect = img.getBoundingClientRect();
+                    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+                    
+                    if (rect.top < windowHeight + 50 && rect.bottom > -50) {
+                        loadImage(img);
+                    }
+                }
+            });
+        }, 100);
+        
+        addEvent(window, 'scroll', checkImages);
+        addEvent(window, 'resize', checkImages);
+        
+        // Initial check
+        checkImages();
+    }
+};
+
+// Accessibility Enhancements
+const AccessibilityEnhancer = {
+    // Initialize accessibility enhancements
+    init: () => {
+        AccessibilityEnhancer.addSkipLinks();
+        AccessibilityEnhancer.enhanceFormAccessibility();
+        AccessibilityEnhancer.addAriaLiveRegions();
+        AccessibilityEnhancer.improveColorContrast();
+        AccessibilityEnhancer.addReducedMotionSupport();
+    },
+    
+    // Add skip links for screen readers
+    addSkipLinks: () => {
+        const skipLinks = createElement('div', 'skip-links');
+        skipLinks.setAttribute('aria-label', 'Skip navigation links');
+        skipLinks.innerHTML = `
+            <a href="#main-content" class="skip-link">Skip to main content</a>
+            <a href="#input-section" class="skip-link">Skip to ingredient input</a>
+            <a href="#results-section" class="skip-link">Skip to recipe results</a>
+        `;
+        
+        document.body.insertBefore(skipLinks, document.body.firstChild);
+        
+        // Add IDs to target sections
+        const mainContent = $('.main-content');
+        const inputSection = $('.input-section');
+        const resultsSection = $('.recipe-results');
+        
+        if (mainContent) mainContent.id = 'main-content';
+        if (inputSection) inputSection.id = 'input-section';
+        if (resultsSection) resultsSection.id = 'results-section';
+    },
+    
+    // Enhance form accessibility
+    enhanceFormAccessibility: () => {
+        // Add fieldsets and legends where appropriate
+        const inputContainer = $('#input-container');
+        if (inputContainer) {
+            inputContainer.setAttribute('role', 'group');
+            inputContainer.setAttribute('aria-labelledby', 'input-section-heading');
+        }
+        
+        // Enhance error announcements
+        const announcer = createElement('div', 'screen-reader-announcer');
+        announcer.setAttribute('aria-live', 'assertive');
+        announcer.setAttribute('aria-atomic', 'true');
+        announcer.style.cssText = 'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
+        document.body.appendChild(announcer);
+        
+        window.announceToScreenReader = (message) => {
+            announcer.textContent = message;
+            setTimeout(() => announcer.textContent = '', 1000);
+        };
+    },
+    
+    // Add ARIA live regions for dynamic content
+    addAriaLiveRegions: () => {
+        const statusRegion = createElement('div', 'status-region');
+        statusRegion.setAttribute('aria-live', 'polite');
+        statusRegion.setAttribute('aria-atomic', 'false');
+        statusRegion.style.cssText = 'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
+        document.body.appendChild(statusRegion);
+        
+        window.announceStatus = (message) => {
+            statusRegion.textContent = message;
+        };
+    },
+    
+    // Improve color contrast
+    improveColorContrast: () => {
+        // Add high contrast mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-contrast: high)').matches) {
+            document.body.classList.add('high-contrast');
+        }
+        
+        // Monitor contrast preference changes
+        if (window.matchMedia) {
+            const contrastQuery = window.matchMedia('(prefers-contrast: high)');
+            contrastQuery.addListener(e => {
+                if (e.matches) {
+                    document.body.classList.add('high-contrast');
+                } else {
+                    document.body.classList.remove('high-contrast');
+                }
+            });
+        }
+    },
+    
+    // Add reduced motion support
+    addReducedMotionSupport: () => {
+        // Respect user's motion preferences
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.body.classList.add('reduced-motion');
+        }
+        
+        // Monitor motion preference changes
+        if (window.matchMedia) {
+            const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+            motionQuery.addListener(e => {
+                if (e.matches) {
+                    document.body.classList.add('reduced-motion');
+                } else {
+                    document.body.classList.remove('reduced-motion');
+                }
+            });
+        }
+    }
+};
+
 // Export utilities for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -609,6 +1007,7 @@ if (typeof module !== 'undefined' && module.exports) {
         animations, handleError, loading,
         ValidationSystem, ProgressSystem, LoadingOverlay,
         TooltipSystem, NotificationSystem, KeyboardNavigation,
-        CharacterCounter
+        CharacterCounter, BrowserCompatibility, ImageOptimization,
+        PerformanceMonitor, LazyLoading, AccessibilityEnhancer
     };
 }
