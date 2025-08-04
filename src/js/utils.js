@@ -683,6 +683,247 @@ const BrowserCompatibility = {
     }
 };
 
+// Enhanced Fallback System for Task 12
+const FallbackSystem = {
+    // Initialize fallback options for all features
+    init: () => {
+        FallbackSystem.initVoiceFallback();
+        FallbackSystem.initImageFallback();
+        FallbackSystem.initFileAPIFallback();
+        FallbackSystem.initLocalStorageFallback();
+        console.log('Fallback systems initialized');
+    },
+
+    // Voice input fallback options
+    initVoiceFallback: () => {
+        if (!BrowserCompatibility.features.webSpeech) {
+            // Add help text and alternative methods
+            FallbackSystem.addVoiceAlternatives();
+        }
+    },
+
+    // Image upload fallback options
+    initImageFallback: () => {
+        if (!BrowserCompatibility.features.fileAPI || !BrowserCompatibility.features.dragDrop) {
+            FallbackSystem.addImageAlternatives();
+        }
+    },
+
+    // File API fallback
+    initFileAPIFallback: () => {
+        if (!BrowserCompatibility.features.fileAPI) {
+            FallbackSystem.addFileAPIAlternatives();
+        }
+    },
+
+    // LocalStorage fallback
+    initLocalStorageFallback: () => {
+        if (!BrowserCompatibility.features.localStorage) {
+            FallbackSystem.addStorageAlternatives();
+        }
+    },
+
+    // Add voice input alternatives
+    addVoiceAlternatives: () => {
+        // Create alternative input suggestions when voice is not available
+        const alternativeHelp = createElement('div', 'voice-fallback-help');
+        alternativeHelp.innerHTML = `
+            <div class="fallback-banner">
+                <span class="fallback-icon">💡</span>
+                <div class="fallback-content">
+                    <strong>Voice input not available</strong>
+                    <p>Try these alternatives:</p>
+                    <ul>
+                        <li>Use text input with ingredient suggestions</li>
+                        <li>Upload photos of your ingredients</li>
+                        <li>Use preset ingredient combinations</li>
+                        <li>Type ingredients manually in the text area</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        // Store for later use when voice component loads
+        window.voiceFallbackHelper = alternativeHelp;
+    },
+
+    // Add image upload alternatives
+    addImageAlternatives: () => {
+        const alternativeHelp = createElement('div', 'image-fallback-help');
+        alternativeHelp.innerHTML = `
+            <div class="fallback-banner">
+                <span class="fallback-icon">📝</span>
+                <div class="fallback-content">
+                    <strong>Image upload not available</strong>
+                    <p>Alternative ways to add ingredients:</p>
+                    <ul>
+                        <li>Type ingredients manually in the text input</li>
+                        <li>Use voice input (if supported)</li>
+                        <li>Browse preset ingredient combinations</li>
+                        <li>Use the ingredient suggestions feature</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        window.imageFallbackHelper = alternativeHelp;
+    },
+
+    // Add File API alternatives
+    addFileAPIAlternatives: () => {
+        NotificationSystem.warning(
+            'File uploads are not supported in this browser. Please use text input or voice input instead.',
+            {
+                title: 'Feature Not Available',
+                duration: 8000
+            }
+        );
+    },
+
+    // Add storage alternatives
+    addStorageAlternatives: () => {
+        console.warn('LocalStorage not available - using session-only storage');
+        
+        // Create session-only storage fallback
+        window.sessionStorageFallback = {};
+        
+        // Override storage functions to use session fallback
+        const originalStorage = { ...storage };
+        
+        storage.set = (key, value) => {
+            try {
+                window.sessionStorageFallback[key] = JSON.stringify(value);
+            } catch (e) {
+                console.warn('Session storage fallback failed:', e);
+            }
+        };
+        
+        storage.get = (key) => {
+            try {
+                const item = window.sessionStorageFallback[key];
+                return item ? JSON.parse(item) : null;
+            } catch (e) {
+                console.warn('Session storage retrieval failed:', e);
+                return null;
+            }
+        };
+        
+        storage.remove = (key) => {
+            try {
+                delete window.sessionStorageFallback[key];
+            } catch (e) {
+                console.warn('Session storage removal failed:', e);
+            }
+        };
+        
+        NotificationSystem.info(
+            'Your preferences will not be saved between sessions in this browser.',
+            {
+                title: 'Limited Storage Available',
+                duration: 6000
+            }
+        );
+    },
+
+    // Get fallback suggestions for a specific feature
+    getSuggestions: (feature) => {
+        const suggestions = {
+            voice: [
+                'Use the text input area to type your ingredients',
+                'Upload photos of your ingredients instead',
+                'Browse preset ingredient combinations',
+                'Use the ingredient autocomplete feature'
+            ],
+            image: [
+                'Type your ingredients in the text area',
+                'Use voice input if available',
+                'Select from preset ingredient combinations',
+                'Use the ingredient suggestions feature'
+            ],
+            storage: [
+                'Your data will only be available during this session',
+                'Consider using a modern browser for better experience',
+                'Bookmark this page to return easily'
+            ]
+        };
+        
+        return suggestions[feature] || [];
+    },
+
+    // Show progressive enhancement message
+    showProgressiveEnhancement: (missingFeatures) => {
+        if (missingFeatures.length === 0) return;
+        
+        const message = `Some advanced features are not available in your browser: ${missingFeatures.join(', ')}. The app will work with basic functionality.`;
+        
+        NotificationSystem.info(message, {
+            title: 'Enhanced Features Unavailable',
+            duration: 10000
+        });
+    },
+
+    // Create graceful degradation for animations
+    disableAnimations: () => {
+        const style = createElement('style');
+        style.textContent = `
+            * {
+                animation-duration: 0s !important;
+                animation-delay: 0s !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log('Animations disabled for performance/compatibility');
+    },
+
+    // Emergency text-only mode
+    enableTextOnlyMode: () => {
+        document.body.classList.add('text-only-mode');
+        
+        // Hide complex interactive elements
+        const elementsToHide = [
+            '.image-upload-container',
+            '.voice-input-container',
+            '.visual-feedback',
+            '.animation-element'
+        ];
+        
+        elementsToHide.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                el.style.display = 'none';
+            });
+        });
+        
+        // Show text alternatives
+        const textAlternative = createElement('div', 'text-only-banner');
+        textAlternative.innerHTML = `
+            <div class="emergency-mode-banner">
+                <span class="banner-icon">📝</span>
+                <div class="banner-content">
+                    <strong>Text-Only Mode Active</strong>
+                    <p>Using simplified interface for maximum compatibility.</p>
+                </div>
+            </div>
+        `;
+        
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.insertBefore(textAlternative, mainContent.firstChild);
+        }
+        
+        NotificationSystem.info(
+            'Switched to text-only mode for better compatibility with your browser.',
+            {
+                title: 'Compatibility Mode',
+                duration: 8000
+            }
+        );
+    }
+};
+
 // Image Optimization Utilities
 const ImageOptimization = {
     // Compress image while maintaining quality
@@ -1007,7 +1248,7 @@ if (typeof module !== 'undefined' && module.exports) {
         animations, handleError, loading,
         ValidationSystem, ProgressSystem, LoadingOverlay,
         TooltipSystem, NotificationSystem, KeyboardNavigation,
-        CharacterCounter, BrowserCompatibility, ImageOptimization,
+        CharacterCounter, BrowserCompatibility, FallbackSystem, ImageOptimization,
         PerformanceMonitor, LazyLoading, AccessibilityEnhancer
     };
 }

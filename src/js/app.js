@@ -41,14 +41,36 @@ class RecipeProviderApp {
         }
     }
     
-    // Task 10: Initialize advanced UI features
+    // Task 10 & 12: Initialize advanced UI features and error handling
     initializeAdvancedFeatures() {
         try {
             // Start performance monitoring
             PerformanceMonitor.start();
             
+            // Task 12: Initialize fallback systems first
+            FallbackSystem.init();
+            
             // Check browser compatibility and show warnings if needed
             BrowserCompatibility.showCompatibilityWarnings();
+            
+            // Task 12: Check for missing features and show progressive enhancement
+            const missingFeatures = this.getMissingFeatures();
+            if (missingFeatures.length > 0) {
+                FallbackSystem.showProgressiveEnhancement(missingFeatures);
+                
+                // Enable emergency text-only mode if too many features are missing
+                if (missingFeatures.length >= 3) {
+                    console.warn('Multiple features unavailable, enabling emergency mode');
+                    setTimeout(() => {
+                        FallbackSystem.enableTextOnlyMode();
+                    }, 2000);
+                }
+                
+                // Disable animations if browser seems very limited
+                if (!BrowserCompatibility.features.requestAnimationFrame) {
+                    FallbackSystem.disableAnimations();
+                }
+            }
             
             // Initialize accessibility enhancements
             AccessibilityEnhancer.init();
@@ -61,7 +83,8 @@ class RecipeProviderApp {
             
         } catch (error) {
             console.warn('Error in advanced features initialization:', error);
-            // Continue with basic initialization even if advanced features fail
+            // Task 12: Graceful degradation - continue with basic initialization
+            this.handleInitializationError(error);
         }
         
         // Mark performance ready when app is fully loaded
@@ -74,6 +97,40 @@ class RecipeProviderApp {
             browserInfo: BrowserCompatibility.getBrowserInfo(),
             supportedFeatures: BrowserCompatibility.features
         });
+    }
+    
+    // Task 12: Handle initialization errors gracefully
+    handleInitializationError(error) {
+        console.error('Advanced features failed to initialize:', error);
+        
+        // Show user-friendly message
+        NotificationSystem.warning(
+            'Some features may not work optimally. The app will continue with basic functionality.',
+            {
+                title: 'Initialization Warning',
+                duration: 6000
+            }
+        );
+        
+        // Enable simplified mode
+        setTimeout(() => {
+            document.body.classList.add('simplified-mode');
+        }, 1000);
+    }
+    
+    // Task 12: Get list of missing critical features
+    getMissingFeatures() {
+        const requiredFeatures = [
+            { key: 'webSpeech', name: 'Voice Input' },
+            { key: 'fileAPI', name: 'File Upload' },
+            { key: 'dragDrop', name: 'Drag & Drop' },
+            { key: 'localStorage', name: 'Data Storage' },
+            { key: 'requestAnimationFrame', name: 'Smooth Animations' }
+        ];
+        
+        return requiredFeatures
+            .filter(feature => !BrowserCompatibility.features[feature.key])
+            .map(feature => feature.name);
     }
     
     createAppStructure() {
@@ -267,6 +324,40 @@ class RecipeProviderApp {
     handleInputMethodChange(methodId) {
         this.currentInputMethod = methodId;
         this.showInputMethod(methodId);
+    }
+    
+    // Task 12: Method to switch to text input for fallback scenarios
+    switchToTextInput() {
+        try {
+            // Switch to text input method
+            this.handleInputMethodChange('text');
+            
+            // Update the selector to reflect the change
+            if (this.inputMethodSelector) {
+                this.inputMethodSelector.selectMethod('text');
+            }
+            
+            // Show helpful notification
+            NotificationSystem.success(
+                'Switched to text input. You can type your ingredients or use autocomplete suggestions.',
+                {
+                    title: 'Input Method Changed',
+                    duration: 4000
+                }
+            );
+            
+            // Focus the text input
+            setTimeout(() => {
+                const textInput = document.querySelector('.text-input-area, .ingredient-input');
+                if (textInput) {
+                    textInput.focus();
+                }
+            }, 500);
+            
+        } catch (error) {
+            console.error('Error switching to text input:', error);
+            NotificationSystem.error('Unable to switch input method. Please try manually selecting text input.');
+        }
     }
     
     showInputMethod(methodId) {

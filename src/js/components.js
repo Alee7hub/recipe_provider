@@ -986,6 +986,66 @@ class ImageUploadComponent extends Component {
     render() {
         this.element = createElement('div', 'image-upload-container');
         
+        // Task 12: Check for File API support
+        const hasFileAPI = BrowserCompatibility.features.fileAPI;
+        const hasDragDrop = BrowserCompatibility.features.dragDrop;
+        
+        if (!hasFileAPI) {
+            // Show unsupported message with fallback options
+            const unsupportedMsg = createElement('div', 'image-upload-unsupported');
+            unsupportedMsg.innerHTML = `
+                <div class="unsupported-icon">🚫</div>
+                <div class="unsupported-text">
+                    <p><strong>File upload is not supported in your browser.</strong></p>
+                    <p>Your browser doesn't support the File API needed for image uploads.</p>
+                </div>
+            `;
+            
+            // Add fallback alternatives
+            if (window.imageFallbackHelper) {
+                unsupportedMsg.appendChild(window.imageFallbackHelper.cloneNode(true));
+            } else {
+                const fallbackOptions = createElement('div', 'image-fallback-options');
+                fallbackOptions.innerHTML = `
+                    <div class="fallback-banner">
+                        <span class="fallback-icon">💡</span>
+                        <div class="fallback-content">
+                            <strong>Alternative options:</strong>
+                            <ul>
+                                <li>📝 Type ingredients manually in text input</li>
+                                <li>🎤 Use voice input (if supported)</li>
+                                <li>⚡ Browse preset ingredient combinations</li>
+                                <li>🔍 Use ingredient suggestions and search</li>
+                            </ul>
+                            <button class="switch-to-text-btn" onclick="window.recipeApp?.switchToTextInput()">
+                                Switch to Text Input
+                            </button>
+                        </div>
+                    </div>
+                `;
+                unsupportedMsg.appendChild(fallbackOptions);
+            }
+            
+            this.element.appendChild(unsupportedMsg);
+            this.container.appendChild(this.element);
+            return;
+        }
+        
+        // Show warning if drag & drop is not supported but file API is
+        if (!hasDragDrop) {
+            const partialSupportMsg = createElement('div', 'image-partial-support');
+            partialSupportMsg.innerHTML = `
+                <div class="warning-banner">
+                    <span class="warning-icon">⚠️</span>
+                    <div class="warning-content">
+                        <strong>Limited Upload Support</strong>
+                        <p>Drag & drop is not supported. You can still click to browse and select files.</p>
+                    </div>
+                </div>
+            `;
+            this.element.appendChild(partialSupportMsg);
+        }
+        
         // Create form field wrapper
         const formField = createElement('div', 'form-field');
         
@@ -1521,6 +1581,37 @@ class VoiceInputComponent extends Component {
             
             const errorMessage = errorMessages[event.error] || `Voice recognition error: ${event.error}`;
             this.updateStatus(errorMessage, 'error');
+            
+            // Task 12: Enhanced error handling with fallback suggestions
+            const criticalErrors = ['not-allowed', 'audio-capture', 'service-not-allowed'];
+            if (criticalErrors.includes(event.error)) {
+                // Show fallback options for critical errors
+                setTimeout(() => {
+                    NotificationSystem.warning(
+                        'Voice input is having issues. Would you like to switch to text input instead?',
+                        {
+                            title: 'Voice Input Problem',
+                            duration: 8000,
+                            actions: [{
+                                text: 'Switch to Text Input',
+                                callback: () => window.recipeApp?.switchToTextInput()
+                            }]
+                        }
+                    );
+                }, 1000);
+            } else if (event.error === 'no-speech') {
+                // Provide helpful tips for no-speech errors
+                setTimeout(() => {
+                    NotificationSystem.info(
+                        'Try speaking closer to your microphone or in a quieter environment.',
+                        {
+                            title: 'Speech Recognition Tip',
+                            duration: 4000
+                        }
+                    );
+                }, 500);
+            }
+            
             handleError(event.error, errorMessage);
             this.stopRecording();
         };
@@ -1547,16 +1638,43 @@ class VoiceInputComponent extends Component {
     render() {
         this.element = createElement('div', 'voice-input-container');
         
-        // Browser support message
+        // Browser support message with enhanced fallback options
         if (!this.isSupported) {
             const unsupportedMsg = createElement('div', 'voice-unsupported');
             unsupportedMsg.innerHTML = `
                 <div class="unsupported-icon">🚫</div>
                 <div class="unsupported-text">
-                    <p>Voice input is not supported in your browser.</p>
+                    <p><strong>Voice input is not supported in your browser.</strong></p>
                     <p>Try using Chrome, Edge, or Safari for voice features.</p>
                 </div>
             `;
+            
+            // Task 12: Add fallback alternatives
+            if (window.voiceFallbackHelper) {
+                unsupportedMsg.appendChild(window.voiceFallbackHelper.cloneNode(true));
+            } else {
+                // Create inline fallback if helper not available
+                const fallbackOptions = createElement('div', 'voice-fallback-options');
+                fallbackOptions.innerHTML = `
+                    <div class="fallback-banner">
+                        <span class="fallback-icon">💡</span>
+                        <div class="fallback-content">
+                            <strong>Alternative options:</strong>
+                            <ul>
+                                <li>📝 Use text input with smart suggestions</li>
+                                <li>📷 Upload photos of your ingredients</li>
+                                <li>⚡ Try preset ingredient combinations</li>
+                                <li>🔍 Browse ingredient categories</li>
+                            </ul>
+                            <button class="switch-to-text-btn" onclick="window.recipeApp?.switchToTextInput()">
+                                Switch to Text Input
+                            </button>
+                        </div>
+                    </div>
+                `;
+                unsupportedMsg.appendChild(fallbackOptions);
+            }
+            
             this.element.appendChild(unsupportedMsg);
             this.container.appendChild(this.element);
             return;
