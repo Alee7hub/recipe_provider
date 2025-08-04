@@ -1306,48 +1306,410 @@ class CuisineSelector extends Component {
     constructor(container) {
         super(container);
         this.selectedCuisines = [];
+        this.filteredCuisines = [];
+        this.searchTerm = '';
+        this.selectedCategory = 'all';
+        
+        // Comprehensive cuisine data with categories, icons, descriptions, and representative images
         this.cuisines = [
-            { id: 'italian', name: 'Italian', icon: '🍝' },
-            { id: 'greek', name: 'Greek', icon: '🫒' },
-            { id: 'persian', name: 'Persian', icon: '🌶️' },
-            { id: 'indian', name: 'Indian', icon: '🍛' },
-            { id: 'chinese', name: 'Chinese', icon: '🥢' },
-            { id: 'mexican', name: 'Mexican', icon: '🌮' },
-            { id: 'japanese', name: 'Japanese', icon: '🍱' },
-            { id: 'french', name: 'French', icon: '🥖' },
-            { id: 'thai', name: 'Thai', icon: '🍜' },
-            { id: 'american', name: 'American', icon: '🍔' },
-            { id: 'mediterranean', name: 'Mediterranean', icon: '🥗' },
-            { id: 'korean', name: 'Korean', icon: '🥘' }
+            // European
+            { 
+                id: 'italian', 
+                name: 'Italian', 
+                icon: '🍝', 
+                category: 'european',
+                description: 'Pasta, pizza, risotto',
+                image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=150&h=100&fit=crop&auto=format',
+                keywords: ['pasta', 'pizza', 'lasagna', 'risotto', 'mediterranean']
+            },
+            { 
+                id: 'greek', 
+                name: 'Greek', 
+                icon: '🫒', 
+                category: 'european',
+                description: 'Mediterranean flavors, olives, feta',
+                image: 'https://images.unsplash.com/photo-1544967882-bc6b9abab333?w=150&h=100&fit=crop&auto=format',
+                keywords: ['olive', 'feta', 'gyro', 'mediterranean', 'tzatziki']
+            },
+            { 
+                id: 'french', 
+                name: 'French', 
+                icon: '🥖', 
+                category: 'european',
+                description: 'Fine dining, pastries, wine',
+                image: 'https://images.unsplash.com/photo-1551218808-94e220e084d2?w=150&h=100&fit=crop&auto=format',
+                keywords: ['croissant', 'baguette', 'wine', 'cheese', 'pastry']
+            },
+            { 
+                id: 'spanish', 
+                name: 'Spanish', 
+                icon: '🥘', 
+                category: 'european',
+                description: 'Paella, tapas, sangria',
+                image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?w=150&h=100&fit=crop&auto=format',
+                keywords: ['paella', 'tapas', 'sangria', 'chorizo', 'mediterranean']
+            },
+            
+            // Asian
+            { 
+                id: 'chinese', 
+                name: 'Chinese', 
+                icon: '🥢', 
+                category: 'asian',
+                description: 'Stir-fry, dim sum, noodles',
+                image: 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=150&h=100&fit=crop&auto=format',
+                keywords: ['stir-fry', 'dim sum', 'noodles', 'rice', 'wok']
+            },
+            { 
+                id: 'japanese', 
+                name: 'Japanese', 
+                icon: '🍱', 
+                category: 'asian',
+                description: 'Sushi, ramen, tempura',
+                image: 'https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=150&h=100&fit=crop&auto=format',
+                keywords: ['sushi', 'ramen', 'tempura', 'miso', 'sake']
+            },
+            { 
+                id: 'thai', 
+                name: 'Thai', 
+                icon: '�', 
+                category: 'asian',
+                description: 'Spicy curries, pad thai',
+                image: 'https://images.unsplash.com/photo-1559847844-d7ba546fdafa?w=150&h=100&fit=crop&auto=format',
+                keywords: ['curry', 'pad thai', 'coconut', 'lemongrass', 'spicy']
+            },
+            { 
+                id: 'indian', 
+                name: 'Indian', 
+                icon: '🍛', 
+                category: 'asian',
+                description: 'Curry, naan, spices',
+                image: 'https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=150&h=100&fit=crop&auto=format',
+                keywords: ['curry', 'naan', 'tandoori', 'biryani', 'spices']
+            },
+            { 
+                id: 'korean', 
+                name: 'Korean', 
+                icon: '🥘', 
+                category: 'asian',
+                description: 'BBQ, kimchi, bibimbap',
+                image: 'https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=150&h=100&fit=crop&auto=format',
+                keywords: ['bbq', 'kimchi', 'bibimbap', 'bulgogi', 'fermented']
+            },
+            
+            // Middle Eastern & Persian
+            { 
+                id: 'persian', 
+                name: 'Persian', 
+                icon: '🌶️', 
+                category: 'middle-eastern',
+                description: 'Rice dishes, kebabs, saffron',
+                image: 'https://images.unsplash.com/photo-1604906830542-06c4c7e1cae8?w=150&h=100&fit=crop&auto=format',
+                keywords: ['kebab', 'rice', 'saffron', 'tahdig', 'pomegranate']
+            },
+            { 
+                id: 'lebanese', 
+                name: 'Lebanese', 
+                icon: '🧆', 
+                category: 'middle-eastern',
+                description: 'Hummus, falafel, tabbouleh',
+                image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=150&h=100&fit=crop&auto=format',
+                keywords: ['hummus', 'falafel', 'tabbouleh', 'pita', 'olive oil']
+            },
+            
+            // American
+            { 
+                id: 'american', 
+                name: 'American', 
+                icon: '🍔', 
+                category: 'american',
+                description: 'Burgers, BBQ, comfort food',
+                image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=150&h=100&fit=crop&auto=format',
+                keywords: ['burger', 'bbq', 'sandwich', 'fries', 'comfort food']
+            },
+            { 
+                id: 'mexican', 
+                name: 'Mexican', 
+                icon: '🌮', 
+                category: 'latin-american',
+                description: 'Tacos, salsa, authentic flavors',
+                image: 'https://images.unsplash.com/photo-1565299585323-38174c26288d?w=150&h=100&fit=crop&auto=format',
+                keywords: ['taco', 'salsa', 'guacamole', 'enchilada', 'chili']
+            },
+            
+            // Mediterranean
+            { 
+                id: 'mediterranean', 
+                name: 'Mediterranean', 
+                icon: '🥗', 
+                category: 'mediterranean',
+                description: 'Healthy, olive oil, fresh herbs',
+                image: 'https://images.unsplash.com/photo-1540713434306-58505449dd96?w=150&h=100&fit=crop&auto=format',
+                keywords: ['olive oil', 'herbs', 'vegetables', 'healthy', 'fresh']
+            }
         ];
+        
+        this.categories = [
+            { id: 'all', name: 'All Cuisines', icon: '🌍' },
+            { id: 'european', name: 'European', icon: '🏰' },
+            { id: 'asian', name: 'Asian', icon: '🥢' },
+            { id: 'middle-eastern', name: 'Middle Eastern', icon: '🕌' },
+            { id: 'american', name: 'American', icon: '🗽' },
+            { id: 'latin-american', name: 'Latin American', icon: '🌶️' },
+            { id: 'mediterranean', name: 'Mediterranean', icon: '🌊' }
+        ];
+        
+        this.filteredCuisines = [...this.cuisines];
         this.render();
     }
     
     render() {
         this.element = createElement('div', 'cuisine-selector');
         
+        // Create header section
+        const header = createElement('div', 'cuisine-header');
         const title = createElement('h3', 'cuisine-title');
-        title.textContent = 'Select Your Preferred Cuisine Style';
+        title.innerHTML = `
+            <span class="title-icon">🍽️</span>
+            <span>Select Your Preferred Cuisine Styles</span>
+        `;
         
-        const grid = createElement('div', 'cuisine-grid');
+        const subtitle = createElement('p', 'cuisine-subtitle');
+        subtitle.textContent = 'Choose one or multiple cuisines to personalize your recipe suggestions';
         
-        this.cuisines.forEach(cuisine => {
-            const card = createElement('div', 'cuisine-card');
-            card.setAttribute('data-cuisine', cuisine.id);
+        header.appendChild(title);
+        header.appendChild(subtitle);
+        
+        // Create search and filter section
+        const controlsSection = createElement('div', 'cuisine-controls');
+        
+        // Search input
+        const searchContainer = createElement('div', 'search-container');
+        const searchInput = createElement('input', 'cuisine-search');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Search cuisines...';
+        searchInput.setAttribute('aria-label', 'Search cuisines');
+        
+        const searchIcon = createElement('span', 'search-icon');
+        searchIcon.innerHTML = '🔍';
+        
+        searchContainer.appendChild(searchIcon);
+        searchContainer.appendChild(searchInput);
+        
+        // Category filter
+        const categoryContainer = createElement('div', 'category-filter');
+        const categoryLabel = createElement('label', 'category-label');
+        categoryLabel.textContent = 'Filter by region:';
+        
+        const categoryButtons = createElement('div', 'category-buttons');
+        this.categories.forEach(category => {
+            const button = createElement('button', 'category-btn');
+            if (category.id === this.selectedCategory) {
+                addClass(button, 'active');
+            }
             
-            card.innerHTML = `
-                <div class="cuisine-icon">${cuisine.icon}</div>
-                <div class="cuisine-name">${cuisine.name}</div>
+            button.innerHTML = `
+                <span class="category-icon">${category.icon}</span>
+                <span class="category-name">${category.name}</span>
             `;
+            button.setAttribute('data-category', category.id);
+            button.setAttribute('aria-label', `Filter by ${category.name}`);
             
-            addEvent(card, 'click', () => this.toggleCuisine(cuisine.id));
-            
-            grid.appendChild(card);
+            addEvent(button, 'click', () => this.filterByCategory(category.id));
+            categoryButtons.appendChild(button);
         });
         
-        this.element.appendChild(title);
-        this.element.appendChild(grid);
+        categoryContainer.appendChild(categoryLabel);
+        categoryContainer.appendChild(categoryButtons);
+        
+        // Selected count indicator
+        const selectionInfo = createElement('div', 'selection-info');
+        const selectedCount = createElement('span', 'selected-count');
+        selectedCount.innerHTML = `
+            <span class="count-number">${this.selectedCuisines.length}</span> 
+            <span class="count-label">cuisines selected</span>
+        `;
+        
+        const clearButton = createElement('button', 'clear-selection-btn');
+        clearButton.innerHTML = '✖️ Clear All';
+        clearButton.style.display = this.selectedCuisines.length > 0 ? 'inline-flex' : 'none';
+        addEvent(clearButton, 'click', () => this.clearSelection());
+        
+        selectionInfo.appendChild(selectedCount);
+        selectionInfo.appendChild(clearButton);
+        
+        controlsSection.appendChild(searchContainer);
+        controlsSection.appendChild(categoryContainer);
+        controlsSection.appendChild(selectionInfo);
+        
+        // Create cuisine grid
+        const gridContainer = createElement('div', 'cuisine-grid-container');
+        const grid = createElement('div', 'cuisine-grid');
+        
+        // Add event listeners
+        addEvent(searchInput, 'input', (e) => {
+            this.searchTerm = e.target.value.toLowerCase();
+            this.updateCuisineDisplay();
+        });
+        
+        addEvent(searchInput, 'keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.target.value = '';
+                this.searchTerm = '';
+                this.updateCuisineDisplay();
+            }
+        });
+        
+        // Store references
+        this.grid = grid;
+        this.searchInput = searchInput;
+        this.selectedCountElement = selectedCount;
+        this.clearButton = clearButton;
+        this.categoryButtons = categoryButtons;
+        
+        gridContainer.appendChild(grid);
+        
+        // Assemble the component
+        this.element.appendChild(header);
+        this.element.appendChild(controlsSection);
+        this.element.appendChild(gridContainer);
         this.container.appendChild(this.element);
+        
+        // Initial render of cuisines
+        this.updateCuisineDisplay();
+        
+        // Add helpful tips section
+        this.addHelpfulTips();
+    }
+    
+    addHelpfulTips() {
+        const tipsSection = createElement('div', 'cuisine-tips');
+        tipsSection.innerHTML = `
+            <div class="tips-header">
+                <span class="tips-icon">💡</span>
+                <span class="tips-title">Tips</span>
+            </div>
+            <div class="tips-content">
+                <div class="tip-item">
+                    <span class="tip-icon">🎯</span>
+                    <span>Select multiple cuisines to get diverse recipe suggestions</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">🔍</span>
+                    <span>Use the search to quickly find specific cuisine types</span>
+                </div>
+                <div class="tip-item">
+                    <span class="tip-icon">🌍</span>
+                    <span>Filter by region to explore cuisines from specific areas</span>
+                </div>
+            </div>
+        `;
+        this.element.appendChild(tipsSection);
+    }
+    
+    updateCuisineDisplay() {
+        // Filter cuisines based on search term and category
+        this.filteredCuisines = this.cuisines.filter(cuisine => {
+            // Category filter
+            const categoryMatch = this.selectedCategory === 'all' || cuisine.category === this.selectedCategory;
+            
+            // Search filter
+            const searchMatch = this.searchTerm === '' || 
+                cuisine.name.toLowerCase().includes(this.searchTerm) ||
+                cuisine.description.toLowerCase().includes(this.searchTerm) ||
+                cuisine.keywords.some(keyword => keyword.toLowerCase().includes(this.searchTerm));
+            
+            return categoryMatch && searchMatch;
+        });
+        
+        // Clear current grid
+        this.grid.innerHTML = '';
+        
+        // Show message if no results
+        if (this.filteredCuisines.length === 0) {
+            const noResults = createElement('div', 'no-results');
+            noResults.innerHTML = `
+                <div class="no-results-icon">🔍</div>
+                <div class="no-results-message">
+                    <h4>No cuisines found</h4>
+                    <p>Try adjusting your search terms or category filter</p>
+                </div>
+            `;
+            this.grid.appendChild(noResults);
+            return;
+        }
+        
+        // Render filtered cuisines
+        this.filteredCuisines.forEach(cuisine => {
+            const card = this.createCuisineCard(cuisine);
+            this.grid.appendChild(card);
+        });
+    }
+    
+    createCuisineCard(cuisine) {
+        const card = createElement('div', 'cuisine-card');
+        card.setAttribute('data-cuisine', cuisine.id);
+        
+        if (this.selectedCuisines.includes(cuisine.id)) {
+            addClass(card, 'selected');
+        }
+        
+        card.innerHTML = `
+            <div class="cuisine-image-container">
+                <img src="${cuisine.image}" alt="${cuisine.name} cuisine" class="cuisine-image" 
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                <div class="cuisine-image-fallback" style="display: none;">
+                    <span class="cuisine-icon-large">${cuisine.icon}</span>
+                </div>
+            </div>
+            <div class="cuisine-content">
+                <div class="cuisine-header">
+                    <span class="cuisine-icon">${cuisine.icon}</span>
+                    <span class="cuisine-name">${cuisine.name}</span>
+                </div>
+                <div class="cuisine-description">${cuisine.description}</div>
+                <div class="cuisine-category">${this.getCategoryName(cuisine.category)}</div>
+            </div>
+            <div class="cuisine-hover-overlay">
+                <span class="hover-text">Click to ${this.selectedCuisines.includes(cuisine.id) ? 'remove' : 'select'}</span>
+            </div>
+        `;
+        
+        // Add click handler
+        addEvent(card, 'click', () => this.toggleCuisine(cuisine.id));
+        
+        // Add keyboard support
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-label', `${cuisine.name} cuisine: ${cuisine.description}`);
+        
+        addEvent(card, 'keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.toggleCuisine(cuisine.id);
+            }
+        });
+        
+        return card;
+    }
+    
+    getCategoryName(categoryId) {
+        const category = this.categories.find(cat => cat.id === categoryId);
+        return category ? category.name : '';
+    }
+    
+    filterByCategory(categoryId) {
+        this.selectedCategory = categoryId;
+        
+        // Update active category button
+        $$('.category-btn').forEach(btn => {
+            removeClass(btn, 'active');
+            if (btn.getAttribute('data-category') === categoryId) {
+                addClass(btn, 'active');
+            }
+        });
+        
+        this.updateCuisineDisplay();
     }
     
     toggleCuisine(cuisineId) {
@@ -1361,15 +1723,187 @@ class CuisineSelector extends Component {
             this.selectedCuisines.push(cuisineId);
             addClass(card, 'selected');
         }
+        
+        // Update card hover text
+        const hoverText = card.querySelector('.hover-text');
+        if (hoverText) {
+            hoverText.textContent = `Click to ${isSelected ? 'select' : 'remove'}`;
+        }
+        
+        // Update selection info
+        this.updateSelectionInfo();
+        
+        // Add visual feedback
+        this.addSelectionFeedback(card, !isSelected);
+    }
+    
+    addSelectionFeedback(card, isSelected) {
+        // Add a temporary visual effect
+        const feedback = createElement('div', 'selection-feedback');
+        feedback.innerHTML = isSelected ? '✓ Added' : '✖️ Removed';
+        feedback.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: ${isSelected ? 'var(--success-color)' : 'var(--error-color)'};
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            animation: feedbackPulse 0.6s ease-out;
+        `;
+        
+        card.style.position = 'relative';
+        card.appendChild(feedback);
+        
+        // Remove feedback after animation
+        setTimeout(() => {
+            if (feedback.parentNode) {
+                feedback.parentNode.removeChild(feedback);
+            }
+        }, 600);
+    }
+    
+    updateSelectionInfo() {
+        if (this.selectedCountElement) {
+            this.selectedCountElement.innerHTML = `
+                <span class="count-number">${this.selectedCuisines.length}</span> 
+                <span class="count-label">cuisine${this.selectedCuisines.length !== 1 ? 's' : ''} selected</span>
+            `;
+        }
+        
+        if (this.clearButton) {
+            this.clearButton.style.display = this.selectedCuisines.length > 0 ? 'inline-flex' : 'none';
+        }
+    }
+    
+    clearSelection() {
+        const previousSelection = [...this.selectedCuisines];
+        this.selectedCuisines = [];
+        
+        // Update all cards
+        $$('.cuisine-card').forEach(card => {
+            removeClass(card, 'selected');
+            const hoverText = card.querySelector('.hover-text');
+            if (hoverText) {
+                hoverText.textContent = 'Click to select';
+            }
+        });
+        
+        this.updateSelectionInfo();
+        
+        // Show confirmation message
+        if (previousSelection.length > 0) {
+            this.showMessage(`Cleared ${previousSelection.length} cuisine selection${previousSelection.length !== 1 ? 's' : ''}`, 'info');
+        }
+    }
+    
+    showMessage(message, type = 'info') {
+        const messageEl = createElement('div', `cuisine-message ${type}`);
+        messageEl.innerHTML = `
+            <span class="message-icon">${type === 'info' ? 'ℹ️' : type === 'success' ? '✅' : '⚠️'}</span>
+            <span class="message-text">${message}</span>
+        `;
+        
+        messageEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        document.body.appendChild(messageEl);
+        
+        setTimeout(() => {
+            if (messageEl.parentNode) {
+                addClass(messageEl, 'fade-out');
+                setTimeout(() => {
+                    if (messageEl.parentNode) {
+                        messageEl.parentNode.removeChild(messageEl);
+                    }
+                }, 300);
+            }
+        }, 3000);
     }
     
     getValue() {
-        return this.selectedCuisines;
+        return this.selectedCuisines.map(id => {
+            const cuisine = this.cuisines.find(c => c.id === id);
+            return cuisine ? cuisine.name.toLowerCase() : id;
+        });
+    }
+    
+    getSelectedCuisineObjects() {
+        return this.selectedCuisines.map(id => 
+            this.cuisines.find(c => c.id === id)
+        ).filter(Boolean);
     }
     
     clear() {
-        this.selectedCuisines = [];
-        $$('.cuisine-card').forEach(card => removeClass(card, 'selected'));
+        this.clearSelection();
+    }
+    
+    // Method to get cuisine statistics
+    getStats() {
+        const categoryStats = {};
+        this.selectedCuisines.forEach(id => {
+            const cuisine = this.cuisines.find(c => c.id === id);
+            if (cuisine) {
+                categoryStats[cuisine.category] = (categoryStats[cuisine.category] || 0) + 1;
+            }
+        });
+        
+        return {
+            total: this.selectedCuisines.length,
+            categories: categoryStats,
+            cuisines: this.getSelectedCuisineObjects()
+        };
+    }
+    
+    // Method to programmatically select cuisines
+    selectCuisines(cuisineIds) {
+        cuisineIds.forEach(id => {
+            if (!this.selectedCuisines.includes(id) && this.cuisines.find(c => c.id === id)) {
+                this.selectedCuisines.push(id);
+            }
+        });
+        this.updateCuisineDisplay();
+        this.updateSelectionInfo();
+    }
+    
+    // Method to get cuisine recommendations based on ingredients
+    getRecommendations(ingredients = []) {
+        if (!ingredients.length) return [];
+        
+        const recommendations = [];
+        const ingredientKeywords = ingredients.map(ing => ing.toLowerCase());
+        
+        this.cuisines.forEach(cuisine => {
+            const matches = cuisine.keywords.filter(keyword => 
+                ingredientKeywords.some(ing => ing.includes(keyword) || keyword.includes(ing))
+            );
+            
+            if (matches.length > 0) {
+                recommendations.push({
+                    ...cuisine,
+                    matchCount: matches.length,
+                    matchingKeywords: matches
+                });
+            }
+        });
+        
+        return recommendations.sort((a, b) => b.matchCount - a.matchCount);
     }
 }
 

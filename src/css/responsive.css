@@ -32,13 +32,62 @@
         border-color: #e67e22;
     }
     
+    /* Enhanced Cuisine Selector - Mobile */
+    .cuisine-controls {
+        padding: var(--spacing-md);
+    }
+    
+    .category-buttons {
+        justify-content: center;
+    }
+    
+    .category-btn {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+    }
+    
+    .category-name {
+        display: none; /* Show only icons on small screens */
+    }
+    
     .cuisine-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 0.8rem;
+        gap: var(--spacing-md);
     }
     
     .cuisine-card {
-        padding: 0.8rem;
+        height: 240px;
+    }
+    
+    .cuisine-image-container {
+        height: 120px;
+    }
+    
+    .cuisine-content {
+        padding: var(--spacing-md);
+    }
+    
+    .cuisine-name {
+        font-size: var(--font-size-md);
+    }
+    
+    .cuisine-description {
+        font-size: var(--font-size-xs);
+        line-height: 1.3;
+    }
+    
+    .selection-info {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        align-items: stretch;
+    }
+    
+    .tips-content {
+        gap: var(--spacing-xs);
+    }
+    
+    .tip-item {
+        font-size: var(--font-size-xs);
     }
     
     .recipe-grid {
@@ -61,8 +110,22 @@
 
 /* Medium devices (tablets, 768px and up) */
 @media (min-width: 576px) and (max-width: 767.98px) {
+    .category-buttons {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+    
+    .category-btn .category-name {
+        display: inline; /* Show category names on tablets */
+    }
+    
     .cuisine-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-lg);
+    }
+    
+    .cuisine-card {
+        height: 300px;
     }
     
     .recipe-grid {
@@ -72,15 +135,46 @@
 
 /* Large devices (desktops, 992px and up) */
 @media (min-width: 768px) and (max-width: 991.98px) {
+    .category-buttons {
+        justify-content: flex-start;
+    }
+    
     .cuisine-grid {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .cuisine-card {
+        height: 320px;
     }
 }
 
 /* Extra large devices (large desktops, 1200px and up) */
 @media (min-width: 992px) {
+    .cuisine-controls {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: var(--spacing-lg);
+        align-items: start;
+    }
+    
+    .search-container {
+        margin-bottom: 0;
+    }
+    
+    .category-filter {
+        margin-bottom: 0;
+    }
+    
+    .selection-info {
+        grid-column: 1 / -1;
+    }
+    
     .cuisine-grid {
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .cuisine-card {
+        height: 320px;
     }
 }
 
@@ -88,8 +182,37 @@
 @media (hover: none) and (pointer: coarse) {
     .btn,
     .input-tab,
-    .cuisine-card {
+    .cuisine-card,
+    .category-btn {
         min-height: 44px; /* Minimum touch target size */
+    }
+    
+    .cuisine-card {
+        /* Remove hover effects on touch devices */
+        transition: transform 0.1s ease;
+    }
+    
+    .cuisine-card:active {
+        transform: scale(0.98);
+    }
+    
+    .cuisine-hover-overlay {
+        display: none; /* Hide hover overlay on touch devices */
+    }
+    
+    .category-btn {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+    
+    .clear-selection-btn {
+        min-height: 44px;
+        padding: var(--spacing-sm) var(--spacing-lg);
+    }
+    
+    /* Make search input more touch-friendly */
+    .cuisine-search {
+        padding: var(--spacing-md);
+        font-size: 16px; /* Prevent zoom on iOS */
     }
     
     .mic-button {
